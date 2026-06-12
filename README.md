@@ -42,11 +42,10 @@ Professional pH monitoring system with real-time display, temperature sensor, an
 
 | Component | Pin | Purpose |
 |-----------|-----|---------|
-| pH Sensor | GPIO 34 (ADC) | Analog pH input |
+| pH Sensor | GPIO 34 (PO pin) (use voltage divider 1kohm & 2kohm)  | Analog pH input |
 | DS18B20 | GPIO 14 | Temperature sensor (OneWire) |
 | Buzzer | GPIO 27 | Alarm notification |
 | TFT Display | SPI (18, 23, 5, 17, 16, 4) | 3.5" display output |
-| Alarm Input | GPIO 35 | External alarm trigger |
 
 ### SPI Display Pinout
 
