@@ -1,244 +1,111 @@
-# pH Monitor - ESP32
+# Smart pH Monitor & Logger (ESP32)
 
-Professional pH monitoring system with real-time display, temperature sensor, and smart alarm notifications.
+Profesjonalny, bezprzewodowy system monitorowania odczynu pH oraz temperatury cieczy oparty na mikrokontrolerze **ESP32**, z kolorowym wyświetlaczem **TFT ST7789 (320x240 px)** w układzie poziomym, nowoczesnym panelem webowym (Web Dashboard) oraz automatycznymi powiadomieniami push (**Pushover**).
 
-![Status](https://img.shields.io/badge/status-active-brightgreen)
-![Platform](https://img.shields.io/badge/platform-ESP32-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-
-## Features
-
-✨ **Hardware Monitoring**
-- Real-time pH measurement with analog sensor
-- Temperature monitoring via DS18B20 sensor
-- Alarm detection with audible buzzer notification
-
-📊 **User Interface**
-- 3.5" TFT display (320×240 landscape)
-- Live pH and temperature values with color-coded status
-- Visual pH scale bar with 14 color segments
-- IP address display for remote access
-
-🔔 **Smart Alerts**
-- Configurable pH alarm thresholds (low/high)
-- Audio buzzer on pin 27 with adjustable volume
-- Visual alarm indicators (orange text)
-- Optional Pushover notifications
-
-🌐 **Web Interface**
-- Async web server for remote monitoring
-- RESTful API endpoints
-- Real-time data synchronization
-- Mobile-friendly dashboard
-
-## Hardware Requirements
-
-### ESP32 Development Board
-- Dual-core processor
-- Wi-Fi connectivity
-- Built-in ADC for analog readings
-
-### External Components
-
-| Component | Pin | Purpose |
-|-----------|-----|---------|
-| pH Sensor | GPIO 34 (PO pin) (use voltage divider 1kohm & 2kohm)  | Analog pH input |
-| DS18B20 | GPIO 14 | Temperature sensor (OneWire) |
-| Buzzer | GPIO 27 | Alarm notification |
-| TFT Display | SPI (18, 23, 5, 17, 16, 4) | 3.5" display output |
-
-### SPI Display Pinout
-
-```
-Pin 18  → SCLK (Clock)
-Pin 23  → MOSI (Data)
-Pin 5   → CS   (Chip Select)
-Pin 17  → DC   (Data/Command)
-Pin 16  → RST  (Reset)
-Pin 4   → BL   (Backlight)
-```
-
-## Installation
-
-### 1. Prerequisites
-- PlatformIO IDE or CLI
-- Python 3.6+
-- ESP32 board drivers
-
-### 2. Clone Repository
-```bash
-git clone https://github.com/yourusername/ph-monitor.git
-cd ph-monitor
-```
-
-### 3. Configure WiFi & Credentials
-Edit `include/config.h`:
-```cpp
-#define WIFI_SSID           "your_wifi_name"
-#define WIFI_PASSWORD       "your_wifi_password"
-#define PUSHOVER_TOKEN      "your_token"    // Optional
-#define PUSHOVER_USER       "your_user"     // Optional
-```
-
-### 4. Build & Upload
-```bash
-# Build
-platformio run
-
-# Build and upload
-platformio run --target upload
-
-# Monitor serial output
-platformio device monitor --baud 115200
-```
-
-## Configuration
-
-### pH Calibration
-The system uses a two-point calibration method:
-```cpp
-#define PH_NEUTRAL_VOLTAGE  2.5f  // Voltage at pH 7
-#define PH_SLOPE            0.18f // mV per pH unit
-```
-
-### ADC Settings
-```cpp
-#define ADC_VREF            3.3f      // Reference voltage
-#define ADC_RESOLUTION      4095.0f   // 12-bit ADC
-#define VOLTAGE_DIVIDER     0.6667f   // Voltage scaling
-```
-
-### Sampling
-```cpp
-#define SAMPLE_COUNT        10     // Averaging samples
-#define SAMPLE_INTERVAL_MS  2000   // Sample interval (ms)
-```
-
-### Alarm Thresholds
-```cpp
-#define PH_ALARM_LOW_DEFAULT   6.0f  // Minimum pH
-#define PH_ALARM_HIGH_DEFAULT  8.0f  // Maximum pH
-```
-
-### Color Coding
-- **Red** (pH < 4): Strongly acidic
-- **Orange** (pH 4-6): Acidic
-- **Yellow** (pH 6-7): Weakly acidic
-- **Green** (pH 7-8): Neutral
-- **Cyan** (pH 8-10): Weakly basic
-- **Blue** (pH > 10): Strongly basic
-
-## Usage
-
-### Web API
-
-**Get Current Readings**
-```bash
-curl http://<ip>/api
-```
-
-Response:
-```json
-{
-  "ph": 7.45,
-  "temp": 25.30,
-  "voltage": 2.487,
-  "alarmLow": 6.0,
-  "alarmHigh": 8.0,
-  "uptime": 3600
-}
-```
-
-**Calibrate pH**
-```bash
-POST /api/calibrate
-Content-Type: application/json
-
-{
-  "voltage": 2.5,
-  "ph": 7.0
-}
-```
-
-### Web Interface
-Access the dashboard at: `http://<device-ip>/`
-
-- View real-time metrics
-- Configure alarm thresholds
-- Calibrate sensors
-- View historical data
-
-## Troubleshooting
-
-### No WiFi Connection
-- Verify SSID and password in `config.h`
-- Check AP is broadcasting (2.4GHz, not 5GHz)
-- Reset ESP32 after configuration change
-
-### Inaccurate pH Readings
-- Verify analog sensor is calibrated
-- Check for noise on ADC pin (add 100nF capacitor)
-- Ensure voltage divider is properly connected
-
-### Weak Buzzer Sound
-- Buzzer is 3.3V driven from GPIO pin
-- For 5V buzzer, use NPN transistor (2N2222) for amplification
-- Circuit: `ESP32(GPIO27) → 1kΩ → 2N2222 Base`, `Emitter → GND`, `Collector → Buzzer(+)`
-
-### Display Not Appearing
-- Verify SPI pins match config.h
-- Check display initialization in serial monitor
-- Ensure backlight is powered (GPIO 4 must be HIGH)
-
-## Project Structure
-
-```
-ph-monitor/
-├── include/
-│   └── config.h              # Hardware & WiFi config
-├── src/
-│   └── main.cpp              # Main application code
-├── lib/                       # Custom libraries
-├── data/                      # Web interface files
-├── platformio.ini            # Build configuration
-└── README.md                 # This file
-```
-
-## Libraries Used
-
-| Library | Version | Purpose |
-|---------|---------|---------|
-| AsyncTCP | 3.2.14 | Async socket library |
-| ESPAsyncWebServer | 3.3.15 | Web server framework |
-| OneWire | 2.3.8 | OneWire protocol |
-| DallasTemperature | 3.9.1 | DS18B20 sensor driver |
-
-## Performance Metrics
-
-- **Sampling Rate**: 10 samples every 2 seconds
-- **Update Frequency**: Display refresh ~2 Hz
-- **Memory**: ~16% RAM, ~75% Flash
-- **Uptime**: 24/7 operation capability
-- **Response Time**: <100ms API response
-
-
-## Contributing
-
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Commit changes
-4. Push to branch
-5. Open a Pull Request
-
-## License
-
-MIT License - see LICENSE file for details
-
-## Author
-
-Created with ❤️ Wisnia 
+Projekt został zaprojektowany z naciskiem na stabilność odczytów analogowych, prostotę kalibracji sondy bezpośrednio z poziomu przeglądarki oraz estetykę interfejsu graficznego.
 
 ---
 
-**Want to support?** ⭐ Star this repository!
+## 🌟 Główne Funkcje Systemu
+
+### 📺 Interfejs Urządzenia (TFT ST7789 320x240 px)
+* **Układ Poziomy (Landscape):** Zoptymalizowany pod kątem czytelności.
+* **Duży odczyt pH:** Dynamicznie zmieniający kolor w zależności od odczynu (kwaśny, neutralny, zasadowy).
+* **Słowna kategoryzacja odczynu:** (np. *KWASNE*, *NEUTRALNE*, *ZASADOWE*).
+* **Wykres Historii Live:** Renderowany w czasie rzeczywistym wykres ostatnich 60 pomiarów z liniami progów alarmowych i wartościami granicznymi (pH 0, 7, 14).
+* **Panel informacyjny:** Aktualne napięcie z sondy (V), temperatura (°C) z czujnika DS18B20, status sieci Wi-Fi, przydzielony adres IP oraz czas pracy urządzenia (Uptime).
+* **Sygnalizacja Alarmowa:** Wizualne ostrzeżenie na ekranie w przypadku przekroczenia zdefiniowanych progów pH.
+
+### 🌐 Nowoczesny Web Dashboard (Panel WWW)
+* **Responsywny Design:** Ciemny motyw w stylu *Glassmorphic*, dostosowany do telefonów, tabletów i komputerów.
+* **Odświeżanie w czasie rzeczywistym:** Wykorzystanie REST API JSON (`/api`) odpytywanego asynchronicznie co 2 sekundy za pomocą technologii AJAX (brak przeładowywania strony).
+* **Interaktywny wykres:** Renderowany na elemencie HTML5 Canvas z obsługą wysokiej gęstości pikseli (Retina/High-DPI).
+* **Zdalna konfiguracja:** Możliwość zmiany progów alarmowych pH oraz danych do powiadomień Pushover bezpośrednio przez formularz na stronie.
+
+### 🧪 Zaawansowana Kalibracja Sondy (Direct-Web)
+* **Podgląd napięcia LIVE:** Widok dokładnego napięcia wyjściowego z czujnika (V) na żywo.
+* **Dwuetapowa kalibracja buforowa:** 
+  * Wzorzec neutralny: **pH 7.00**
+  * Wzorzec kwaśny: **pH 4.01**
+  * Wzorzec zasadowy: **pH 9.18**
+* Zapisywanie parametrów kalibracyjnych (napięcia bazowego i nachylenia charakterystyki) bezpośrednio do pamięci nieulotnej ESP32 za pomocą jednego kliknięcia.
+
+### 🔔 Powiadomienia Pushover
+* Automatyczne wysyłanie powiadomień push na telefon komórkowy za pomocą serwisu **Pushover** przy wejściu w stan alarmowy i po powrocie pH do normy.
+* Asynchroniczne wysyłanie żądań HTTPS za pomocą biblioteki `WiFiClientSecure` w dedykowanym zadaniu FreeRTOS (brak blokowania głównej pętli programu).
+
+### 📈 Stabilizacja Pomiarów (Algorytmy Filtrujące)
+* **Filtr Medianowy:** Sortowanie próbek metodą insertion-sort i odrzucenie 25% skrajnych wartości (odporność na nagłe szpilki napięcia).
+* **Filtr EMA (Exponential Moving Average):** Wygładzanie powolnych zmian napięcia (współczynnik `0.05` skutecznie eliminujący szumy własne ESP32 przy włączonym Wi-Fi).
+
+---
+
+## 🔌 Schemat Połączeń (Wiring)
+
+| Moduł | Pin ESP32 | Opis |
+| :--- | :--- | :--- |
+| **Wyświetlacz TFT ST7789** | | |
+| VCC | 3.3V / 5V | Zasilanie wyświetlacza |
+| GND | GND | Wspólna masa |
+| SCLK | GPIO 18 | SPI Clock (SCL) |
+| MOSI | GPIO 23 | SPI Data (SDA) |
+| CS | GPIO 5 | Chip Select (CS) |
+| DC | GPIO 17 | Data/Command (DC) |
+| RST | GPIO 16 | Reset (RST) |
+| BL | GPIO 4 | Podświetlenie (Backlight) |
+| **Czujnik pH (np. PH-4502C)** | | |
+| VCC | 5V / VIN | **Zalecane stabilne 5V** dla poprawnej pracy op-ampa |
+| GND | GND | Wspólna masa |
+| PO | GPIO 34 | Wejście analogowe (przez dzielnik rezystorowy 2/3 np. 10kΩ / 20kΩ) |
+| DO (Opcjonalnie) | GPIO 35 | Cyfrowe wejście alarmu progowego z czujnika |
+| **Czujnik temperatury DS18B20**| | |
+| VCC | 3.3V / 5V | Zasilanie |
+| GND | GND | Wspólna masa |
+| DATA | GPIO 14 | Magistrala 1-Wire (wymaga rezystora podciągającego 4.7kΩ do VCC) |
+
+---
+
+## 🛠️ Technologie i Biblioteki
+
+Projekt został zbudowany w środowisku **PlatformIO** z użyciem frameworka **Arduino** dla platformy **Espressif 32**.
+
+Główne zależności (zdefiniowane w `platformio.ini`):
+* **AsyncTCP & ESPAsyncWebServer** (autor: mathieucarbou) – wydajny, asynchroniczny serwer WWW obsługujący zapytania REST i statyczne pliki HTML.
+* **DallasTemperature & OneWire** – obsługa czujnika temperatury DS18B20.
+* **Preferences** (wbudowana w rdzeń ESP32) – obsługa zapisu i odczytu konfiguracji w pamięci Flash (NVS).
+* **ESPmDNS** – obsługa protokołu lokalnego rozwiązywania nazw (`ph-monitor.local`).
+
+---
+
+## ⚙️ Pierwsze Uruchomienie i Konfiguracja
+
+1. Skonfiguruj dane swojej sieci Wi-Fi w pliku `include/config.h`:
+   ```cpp
+   #define WIFI_SSID       "TwojaNazwaSieci"
+   #define WIFI_PASSWORD   "TwojeHaslo"
+   ```
+2. Skompiluj projekt i wgraj oprogramowanie na ESP32 za pomocą PlatformIO:
+   ```bash
+   pio run --target upload
+   ```
+3. Odczytaj przydzielony adres IP z dolnej sekcji ekranu TFT urządzenia.
+4. Otwórz przeglądarkę na komputerze lub smartfonie w tej samej sieci i wpisz odczytany adres IP (np. `http://192.168.1.150`).
+5. Skonfiguruj progi alarmowe pH oraz klucze Pushover w dolnej sekcji strony i kliknij **Zapisz Ustawienia**.
+
+---
+
+## 🧪 Procedura Kalibracji Sondy
+
+1. Przygotuj roztwory buforowe o znanym pH (np. pH 7.00, pH 4.01, pH 9.18).
+2. Wyreguluj potencjometr sprzętowy na płytce czujnika pH (ten bliżej gniazda BNC), tak aby przy zanurzeniu sondy w buforze **pH 7.00** (lub po zwarciu pinu środkowego BNC z obudową) urządzenie wskazywało na ekranie napięcie jak najbliższe **2.500 V**.
+3. **Kalibracja programowa na stronie WWW:**
+   * Zanurz sondę w buforze **pH 7.00**, odczekaj na ustabilizowanie się odczytu napięcia na karcie kalibracji i kliknij **Kalibruj pH 7.00 (Neutralny)**.
+   * Przepłucz sondę wodą destylowaną i umieść w buforze **pH 4.01**. Gdy odczyt napięcia przestanie się zmieniać, kliknij **Kalibruj pH 4.01 (Kwaśny)**. 
+   * (Opcjonalnie) Powtórz proces dla bufora **pH 9.18** klikając **Kalibruj pH 9.18 (Zasadowy)**.
+4. Parametry kalibracji zostaną natychmiast zapisane w pamięci flash i zastosowane do bieżących pomiarów.
+
+---
+
+## 👨‍💻 Autor
+
+Projekt stworzony i rozwijany przez: **Wisnia**
