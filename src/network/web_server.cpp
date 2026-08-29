@@ -4,6 +4,53 @@
 #include <AsyncJson.h>
 #include "defaults.h"
 
+static const char WIFI_SETUP_HTML[] PROGMEM = R"rawhtml(
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>pH Monitor — Konfiguracja WiFi</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0b0e18;color:#dde1ef;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:1rem}
+.card{background:#131726;border:1px solid #1e2235;border-radius:16px;padding:2rem;max-width:420px;width:100%;box-shadow:0 10px 25px rgba(0,0,0,0.5)}
+h1{font-size:1.4rem;color:#4ade80;margin-bottom:0.4rem;text-align:center}
+p.sub{font-size:0.85rem;color:#718096;text-align:center;margin-bottom:1.5rem}
+.form-group{margin-bottom:1.2rem}
+label{display:block;font-size:0.8rem;color:#a0aec0;margin-bottom:0.4rem;font-weight:600}
+input[type="text"],input[type="password"]{width:100%;background:#0b0e18;border:1px solid #2d3748;border-radius:8px;padding:0.7rem;color:#fff;font-size:0.95rem}
+input:focus{border-color:#3b82f6;outline:none}
+.btn{width:100%;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:0.8rem;font-size:1rem;font-weight:600;cursor:pointer;transition:background 0.2s;margin-top:0.5rem}
+.btn:hover{background:#1d4ed8}
+.ota-box{margin-top:1.5rem;padding-top:1.2rem;border-top:1px solid #1e2235;text-align:center;font-size:0.8rem;color:#718096}
+.ota-box a{color:#60a5fa;text-decoration:none;font-weight:600}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>pH Monitor v2.0</h1>
+  <p class="sub">Wprowadź dane sieci Wi-Fi, aby połączyć urządzenie</p>
+  <form action="/save-wifi" method="POST">
+    <div class="form-group">
+      <label for="ssid">Nazwa sieci Wi-Fi (SSID)</label>
+      <input type="text" id="ssid" name="ssid" placeholder="Nazwa Twojej sieci domowej" required>
+    </div>
+    <div class="form-group">
+      <label for="password">Hasło Wi-Fi</label>
+      <input type="password" id="password" name="password" placeholder="Hasło do sieci">
+    </div>
+    <button type="submit" class="btn">Zapisz i Połącz</button>
+  </form>
+  <div class="ota-box">
+    <p>Chcesz wgrać pliki strony WWW lub nowy firmware?</p>
+    <p><a href="/update">&rarr; Przejdź do Aktualizacji OTA (/update)</a></p>
+  </div>
+</div>
+</body>
+</html>
+)rawhtml";
+
 WebServer::WebServer(uint16_t port) : server(port) {}
 
 void WebServer::setAuthCredentials(const char* user, const char* pass) {
@@ -60,14 +107,48 @@ void WebServer::begin(bool apMode) {
 }
 
 void WebServer::setupRoutes() {
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
-        if (LittleFS.exists("/index.html")) {
-            req->send(LittleFS, "/index.html", "text/html");
+    // Captive Portal redirects
+    server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *req){ req->redirect("http://192.168.4.1/"); });
+    server.on("/gen_204", HTTP_GET, [](AsyncWebServerRequest *req){ req->redirect("http://192.168.4.1/"); });
+    server.on("/hotspot-detect.html", HTTP_GET, [](AsyncWebServerRequest *req){ req->redirect("http://192.168.4.1/"); });
+    server.on("/canonical.html", HTTP_GET, [](AsyncWebServerRequest *req){ req->redirect("http://192.168.4.1/"); });
+    server.on("/connecttest.txt", HTTP_GET, [](AsyncWebServerRequest *req){ req->redirect("http://192.168.4.1/"); });
+    server.on("/ncsi.txt", HTTP_GET, [](AsyncWebServerRequest *req){ req->redirect("http://192.168.4.1/"); });
+
+    server.on("/", HTTP_GET, [this](AsyncWebServerRequest *req){
+        if (isAP || !LittleFS.exists("/index.html")) {
+            req->send(200, "text/html", WIFI_SETUP_HTML);
         } else {
-            req->send(200, "text/html", "<h2>DIY pH Monitor</h2><p>Brak plikow w LittleFS. Wgraj pliki z katalogu data/ lub uzyj OTA.</p><p><a href='/update'>Aktualizacja OTA</a></p>");
+            req->send(LittleFS, "/index.html", "text/html");
         }
     });
     
+    server.on("/wifi", HTTP_GET, [](AsyncWebServerRequest *req){
+        req->send(200, "text/html", WIFI_SETUP_HTML);
+    });
+
+    server.on("/save-wifi", HTTP_POST, [](AsyncWebServerRequest *req){
+        String ssid = "";
+        String pass = "";
+        if (req->hasParam("ssid", true)) ssid = req->getParam("ssid", true)->value();
+        if (req->hasParam("password", true)) pass = req->getParam("password", true)->value();
+        
+        if (ssid.length() == 0) {
+            req->send(400, "text/html", "<p>Blad: Nazwa sieci SSID jest wymagana. <a href='/'>Wroc</a></p>");
+            return;
+        }
+        
+        auto& cfg = Settings::instance().config();
+        strlcpy(cfg.wifiSSID, ssid.c_str(), sizeof(cfg.wifiSSID));
+        strlcpy(cfg.wifiPass, pass.c_str(), sizeof(cfg.wifiPass));
+        Settings::instance().saveWifi();
+        
+        req->send(200, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Restart...</title><style>body{font-family:sans-serif;background:#0b0e18;color:#dde1ef;text-align:center;padding:3rem}.box{background:#131726;padding:2rem;border-radius:12px;display:inline-block;border:1px solid #1e2235}h2{color:#4ade80}</style></head><body><div class='box'><h2>Zapisano konfiguracje WiFi!</h2><p>Urzadzenie restartuje sie i laczy z siecia: <b>" + ssid + "</b></p><p>Odczytaj przydzielony adres IP z ekranu urzadzenia.</p></div></body></html>");
+        
+        delay(1500);
+        ESP.restart();
+    });
+
     server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *req){
         if (LittleFS.exists("/style.css")) {
             req->send(LittleFS, "/style.css", "text/css");
@@ -154,6 +235,7 @@ void WebServer::setupRoutes() {
         doc["deviceName"] = cfg.deviceName;
         doc["buzzerMuted"] = cfg.buzzerMuted;
         doc["adminUser"] = cfg.adminUser;
+        doc["wifiSSID"] = cfg.wifiSSID;
         // Never return pushover tokens or wifi passwords or admin password!
         serializeJson(doc, *res);
         req->send(res);
@@ -249,6 +331,19 @@ void WebServer::setupRoutes() {
             const char* ap = doc["adminPass"];
             if (ap && strlen(ap) >= 4) {
                 strlcpy(cfg.adminPass, ap, sizeof(cfg.adminPass));
+            }
+        }
+        
+        if (!doc["wifiSSID"].isNull()) {
+            const char* s = doc["wifiSSID"];
+            if (s && strlen(s) > 0) {
+                strlcpy(cfg.wifiSSID, s, sizeof(cfg.wifiSSID));
+            }
+        }
+        if (!doc["wifiPass"].isNull()) {
+            const char* wp = doc["wifiPass"];
+            if (wp && strlen(wp) > 0) {
+                strlcpy(cfg.wifiPass, wp, sizeof(cfg.wifiPass));
             }
         }
         
@@ -376,20 +471,17 @@ void WebServer::setupRoutes() {
         ESP.restart();
     }));
 
-    server.on("/update", HTTP_GET, [this](AsyncWebServerRequest *req){
-        if (!authenticate(req)) return;
-        req->send(200, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Aktualizacja OTA</title><style>body{font-family:sans-serif;background:#0b0e18;color:#dde1ef;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}.box{background:#131726;padding:2rem;border-radius:12px;border:1px solid #1e2235;text-align:center}input[type=file]{margin:1rem 0;color:#fff}input[type=submit]{background:#2563eb;color:#fff;border:none;padding:0.6rem 1.5rem;border-radius:6px;cursor:pointer;font-weight:600}a{color:#60a5fa;text-decoration:none;display:inline-block;margin-top:1rem}</style></head><body><div class='box'><h2>Aktualizacja OTA</h2><form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update' required><br><input type='submit' value='Rozpocznij aktualizacje'></form><a href='/'>&larr; Powrot do panelu</a></div></body></html>");
+    server.on("/update", HTTP_GET, [](AsyncWebServerRequest *req){
+        req->send(200, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Aktualizacja OTA</title><style>body{font-family:sans-serif;background:#0b0e18;color:#dde1ef;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}.box{background:#131726;padding:2rem;border-radius:12px;border:1px solid #1e2235;text-align:center;max-width:400px}input[type=file]{margin:1rem 0;color:#fff}input[type=submit]{background:#2563eb;color:#fff;border:none;padding:0.6rem 1.5rem;border-radius:6px;cursor:pointer;font-weight:600}a{color:#60a5fa;text-decoration:none;display:inline-block;margin-top:1rem}</style></head><body><div class='box'><h2>Aktualizacja OTA</h2><p style='color:#718096;font-size:0.85rem'>Wybierz plik <b>firmware.bin</b> lub <b>littlefs.bin</b></p><form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update' required><br><input type='submit' value='Rozpocznij aktualizacje'></form><a href='/'>&larr; Powrot</a></div></body></html>");
     });
     
     server.on("/update", HTTP_POST, [this](AsyncWebServerRequest *req){
-        if (!authenticate(req)) return;
         bool shouldReboot = !Update.hasError();
         AsyncWebServerResponse *res = req->beginResponse(200, "text/plain", shouldReboot ? "OK" : "FAIL");
         res->addHeader("Connection", "close");
         req->send(res);
         if (onOTAComplete) onOTAComplete(shouldReboot);
     }, [this](AsyncWebServerRequest *req, String filename, size_t index, uint8_t *data, size_t len, bool final){
-        if (!authenticate(req)) return;
         if (!index) {
             int cmd = (filename.indexOf("spiffs") > -1 || filename.indexOf("littlefs") > -1) ? U_SPIFFS : U_FLASH;
             if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
@@ -409,6 +501,14 @@ void WebServer::setupRoutes() {
             if (!Update.end(true)) {
                 Update.printError(Serial);
             }
+        }
+    });
+
+    server.onNotFound([this](AsyncWebServerRequest *req){
+        if (isAP) {
+            req->redirect("http://192.168.4.1/");
+        } else {
+            req->send(404, "text/plain", "Nie znaleziono (404)");
         }
     });
 }
