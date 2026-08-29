@@ -14,6 +14,10 @@
 #include "display/display.h"
 #include "display/ui.h"
 
+#if __has_include("secrets.h")
+#include "secrets.h"
+#endif
+
 // Global objects
 PhSensor phSensor;
 TemperatureSensor tempSensor;
@@ -87,6 +91,14 @@ void setup() {
     
     Settings::instance().load();
     auto& cfg = Settings::instance().config();
+
+#if defined(DEFAULT_WIFI_SSID) && defined(DEFAULT_WIFI_PASS)
+    if (!Settings::instance().hasWifiCredentials() && strlen(DEFAULT_WIFI_SSID) > 0) {
+        strlcpy(cfg.wifiSSID, DEFAULT_WIFI_SSID, sizeof(cfg.wifiSSID));
+        strlcpy(cfg.wifiPass, DEFAULT_WIFI_PASS, sizeof(cfg.wifiPass));
+        Settings::instance().saveWifi();
+    }
+#endif
 
     Display::init();
     UI::drawBootAnimation();
