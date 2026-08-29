@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pl" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pH Monitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1>pH Monitor <span id="fw-version" class="badge">v1.0.0</span></h1>
+                <div class="status-indicator">
+                    <span id="status-dot" class="dot pulse"></span>
+                    <span id="status-text">Oczekiwanie na dane...</span>
+                    <span class="last-update">(Aktualizacja: <span id="last-update">--:--:--</span>)</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="theme-toggle" class="btn btn-icon" title="Przełącz motyw">
+                    <svg id="theme-icon-light" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                    <svg id="theme-icon-dark" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <section class="cards-grid">
+                <div class="card val-card" id="card-ph">
+                    <div class="card-title">pH Zmierzone</div>
+                    <div class="card-value ph-value" id="val-ph">--.--</div>
+                    <div class="card-stats">Min: <span id="val-ph-min">--.--</span> | Max: <span id="val-ph-max">--.--</span></div>
+                </div>
+                
+                <div class="card val-card">
+                    <div class="card-title">Napięcie Sondy (V)</div>
+                    <div class="card-value" id="val-voltage">-.---</div>
+                    <div class="card-stats">Raw ADC</div>
+                </div>
+
+                <div class="card val-card">
+                    <div class="card-title">Temperatura (°C)</div>
+                    <div class="card-value" id="val-temp">--.-</div>
+                    <div class="card-stats">Min: <span id="val-temp-min">--.-</span> | Max: <span id="val-temp-max">--.-</span></div>
+                </div>
+
+                <div class="card val-card">
+                    <div class="card-title">Status Alarmu</div>
+                    <div class="card-value status-badge badge-ok" id="val-alarm">OK</div>
+                    <div class="card-stats">Limity: <span id="val-alarm-lim">-- / --</span></div>
+                </div>
+
+                <div class="card val-card">
+                    <div class="card-title">Czas Pracy (Uptime)</div>
+                    <div class="card-value text-medium" id="val-uptime">--:--:--</div>
+                    <div class="card-stats">WIFI: <span id="val-rssi">--</span> dBm</div>
+                </div>
+            </section>
+
+            <section class="chart-section card">
+                <div class="card-header">
+                    <h2>Historia pH</h2>
+                    <div class="actions">
+                        <button id="btn-reset-stats" class="btn btn-secondary">Reset Min/Max</button>
+                        <button id="btn-dl-csv" class="btn btn-secondary">Pobierz CSV</button>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="phChart"></canvas>
+                </div>
+            </section>
+
+            <div class="two-col-grid">
+                <section class="settings-section card">
+                    <div class="card-header">
+                        <h2>Ustawienia</h2>
+                    </div>
+                    <form id="settings-form">
+                        <div class="settings-grid">
+                            <div class="settings-col">
+                                <h3>Podstawowe</h3>
+                                <div class="form-group">
+                                    <label for="cfg-devname">Nazwa urządzenia</label>
+                                    <input type="text" id="cfg-devname" name="devname" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-ph-min">Alarm Low (pH)</label>
+                                    <input type="number" step="0.01" id="cfg-ph-min" name="ph_min" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-ph-max">Alarm High (pH)</label>
+                                    <input type="number" step="0.01" id="cfg-ph-max" name="ph_max" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-hysteresis">Histereza (pH)</label>
+                                    <input type="number" step="0.01" id="cfg-hysteresis" name="hysteresis" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-alarm-hold">Opóźnienie alarmu (s)</label>
+                                    <input type="number" id="cfg-alarm-hold" name="alarm_hold" required>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-col">
+                                <h3>Powiadomienia Pushover</h3>
+                                <div class="form-group checkbox">
+                                    <input type="checkbox" id="cfg-push-en" name="push_en">
+                                    <label for="cfg-push-en">Włącz Pushover</label>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-push-user">Klucz Użytkownika</label>
+                                    <input type="password" id="cfg-push-user" name="push_user" placeholder="Wpisz aby zmienić">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-push-token">Token Aplikacji</label>
+                                    <input type="password" id="cfg-push-token" name="push_token" placeholder="Wpisz aby zmienić">
+                                </div>
+                                <div class="form-group">
+                                    <button type="button" id="btn-test-push" class="btn btn-secondary">Testuj Powiadomienie</button>
+                                </div>
+                            </div>
+
+                            <div class="settings-col">
+                                <h3>MQTT</h3>
+                                <div class="form-group checkbox">
+                                    <input type="checkbox" id="cfg-mqtt-en" name="mqtt_en">
+                                    <label for="cfg-mqtt-en">Włącz MQTT</label>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-mqtt-broker">Broker (IP/Domena)</label>
+                                    <input type="text" id="cfg-mqtt-broker" name="mqtt_broker">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-mqtt-port">Port</label>
+                                    <input type="number" id="cfg-mqtt-port" name="mqtt_port">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-mqtt-user">Użytkownik</label>
+                                    <input type="text" id="cfg-mqtt-user" name="mqtt_user">
+                                </div>
+                                <div class="form-group">
+                                    <label for="cfg-mqtt-pass">Hasło</label>
+                                    <input type="password" id="cfg-mqtt-pass" name="mqtt_pass" placeholder="Wpisz aby zmienić">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" id="btn-save-cfg">Zapisz Ustawienia</button>
+                            <span id="cfg-save-status" class="status-msg"></span>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="calib-section card">
+                    <div class="card-header">
+                        <h2>Kalibracja Sondy</h2>
+                    </div>
+                    <div class="calib-grid">
+                        <div class="calib-info">
+                            <h3>Parametry</h3>
+                            <ul class="param-list">
+                                <li><span>pH 7.00:</span> <strong id="cal-v7">-.--- V</strong></li>
+                                <li><span>pH 4.01:</span> <strong id="cal-v4">-.--- V</strong></li>
+                                <li><span>pH 9.18:</span> <strong id="cal-v9">-.--- V</strong></li>
+                                <li><span>Kondycja:</span> <strong id="cal-health">--%</strong></li>
+                            </ul>
+                            <div class="live-reading">
+                                Obecnie: <strong id="cal-live-v">-.--- V</strong> / <strong id="cal-live-ph">--.-- pH</strong>
+                            </div>
+                        </div>
+                        
+                        <div class="calib-actions">
+                            <h3>Bufory Standardowe</h3>
+                            <div class="btn-group-grid">
+                                <button type="button" class="btn btn-secondary" onclick="calibrate('7.00')">Kalibruj pH 7.00</button>
+                                <button type="button" class="btn btn-secondary" onclick="calibrate('4.01')">Kalibruj pH 4.01</button>
+                                <button type="button" class="btn btn-secondary" onclick="calibrate('9.18')">Kalibruj pH 9.18</button>
+                                <button type="button" class="btn btn-danger" onclick="calibrate('reset')">Reset Do Fabrycznych</button>
+                            </div>
+                            
+                            <h3 style="margin-top: 15px;">Własny Bufor</h3>
+                            <div class="custom-calib">
+                                <input type="number" step="0.01" id="cal-custom-val" placeholder="np. 6.86">
+                                <button type="button" class="btn btn-secondary" onclick="calibrateCustom()">Kalibruj</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="calib-status-box" class="calib-status" style="display: none;">
+                        --
+                    </div>
+                </section>
+            </div>
+            
+            <section class="admin-section card">
+                <div class="card-header">
+                    <h2>Bezpieczeństwo</h2>
+                </div>
+                <form id="admin-form">
+                    <div class="form-group-inline">
+                        <div class="form-group">
+                            <label for="admin-user">Admin Użytkownik</label>
+                            <input type="text" id="admin-user" name="admin_user">
+                        </div>
+                        <div class="form-group">
+                            <label for="admin-pass">Admin Hasło</label>
+                            <input type="password" id="admin-pass" name="admin_pass" placeholder="Wpisz aby zmienić">
+                        </div>
+                        <button type="submit" class="btn btn-warning" id="btn-save-admin">Zmień Dane Logowania</button>
+                        <span id="admin-save-status" class="status-msg"></span>
+                    </div>
+                </form>
+            </section>
+        </main>
+
+        <footer>
+            <div class="footer-content">
+                <div class="creator">Made by Wisnia</div>
+                <div class="sys-info">IP: <span id="sys-ip">--.--.--.--</span> | Odświeżanie: 2s</div>
+                <div class="links">
+                    <a href="/api/status" target="_blank">API Status</a> | 
+                    <a href="/update" target="_blank">Aktualizacja OTA</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+name: PlatformIO Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Create secrets.h from example
+        run: cp include/secrets.h.example include/secrets.h
+
+      - name: Build firmware
+        run: pio run
+
+      - name: Build filesystem
+        run: pio run --target buildfs
+
+      - name: Report firmware size
+        run: |
+          echo "## Firmware Size" >> $GITHUB_STEP_SUMMARY
+          ls -la .pio/build/esp32dev/firmware.bin >> $GITHUB_STEP_SUMMARY
