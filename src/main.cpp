@@ -92,14 +92,6 @@ void setup() {
     Settings::instance().load();
     auto& cfg = Settings::instance().config();
 
-#if defined(DEFAULT_WIFI_SSID) && defined(DEFAULT_WIFI_PASS)
-    if (strlen(DEFAULT_WIFI_SSID) > 0) {
-        strlcpy(cfg.wifiSSID, DEFAULT_WIFI_SSID, sizeof(cfg.wifiSSID));
-        strlcpy(cfg.wifiPass, DEFAULT_WIFI_PASS, sizeof(cfg.wifiPass));
-        Settings::instance().saveWifi();
-    }
-#endif
-
     Display::init();
     UI::drawBootAnimation();
 
@@ -115,18 +107,75 @@ void setup() {
     alarmMgr = new AlarmManager(cfg.alarmLow, cfg.alarmHigh, cfg.hysteresis, cfg.alarmHoldSec * 1000);
     historyLogger.begin();
 
-    if (Settings::instance().hasWifiCredentials()) {
-        wifiMgr.begin(cfg.wifiSSID, cfg.wifiPass);
-        apModeActive = wifiMgr.isAPMode();
-    } else {
-        wifiMgr.startAP();
-        apModeActive = true;
+    // Apply default WiFi from secrets.h (if defined) on first boot
+#if defined(DEFAULT_WIFI_SSID) && defined(DEFAULT_WIFI_PASS)
+    if (strlen(DEFAULT_WIFI_SSID) > 0 && strlen(cfg.wifiSSID) == 0) {
+        strlcpy(cfg.wifiSSID, DEFAULT_WIFI_SSID, sizeof(cfg.wifiSSID));
+        strlcpy(cfg.wifiPass, DEFAULT_WIFI_PASS, sizeof(cfg.wifiPass));
+        Settings::instance().saveWifi();
+        Serial.println("[CFG] Zapisano domyslne WiFi z secrets.h");
     }
+#endif
 
-    if (!apModeActive) {
-        wifiMgr.setupMDNS(HOSTNAME);
-        wifiMgr.setupNTP();
+    Serial.println("=== pH Monitor v2.0 ===");
+
+    if (strlen(cfg.wifiSSID) > 0) {
+        Serial.printf("[BOOT] Laczenie z WiFi: '%s'...\n", cfg.wifiSSID);
+        
+        Display::fillScreen(0x0000);
+        Display::drawString(10, 10, "Laczenie z WiFi...", 0xFFFF, 0x0000, 2);
+        Display::drawString(10, 40, cfg.wifiSSID, 0x07E0, 0x0000, 2);
+        
+        WiFi.disconnect(true);
+        delay(100);
+        WiFi.mode(WIFI_STA);
+        WiFi.setSleep(false);
+        WiFi.setAutoReconnect(true);
+        WiFi.begin(cfg.wifiSSID, cfg.wifiPass);
+        
+        unsigned long wifiStart = millis();
+        const unsigned long wifiTimeout = 20000;
+        int dots = 0;
+        while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < wifiTimeout) {
+            delay(500);
+            dots++;
+            Serial.printf("  ... status=%d (czas: %lums)\n", WiFi.status(), millis() - wifiStart);
+            char buf[40];
+            snprintf(buf, sizeof(buf), "Proba %d / 40 ...", dots);
+            Display::drawString(10, 70, buf, 0xFFFF, 0x0000, 1);
+        }
+        
+        if (WiFi.status() == WL_CONNECTED) {
+            apModeActive = false;
+            Serial.printf("[WiFi] POLACZONO! IP: %s  RSSI: %d dBm\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+            
+            Display::fillScreen(0x0000);
+            Display::drawString(10, 10, "WiFi OK!", 0x07E0, 0x0000, 3);
+            Display::drawString(10, 50, WiFi.localIP().toString().c_str(), 0xFFFF, 0x0000, 2);
+            delay(2000);
+            
+            wifiMgr.setupMDNS(HOSTNAME);
+            wifiMgr.setupNTP();
+        } else {
+            apModeActive = true;
+            Serial.printf("[WiFi] BLAD! status=%d. Uruchamiam AP.\n", WiFi.status());
+            
+            Display::fillScreen(0x0000);
+            Display::drawString(10, 10, "WiFi BLAD!", 0xF800, 0x0000, 2);
+            char statusBuf[40];
+            snprintf(statusBuf, sizeof(statusBuf), "Status: %d  SSID: %s", WiFi.status(), cfg.wifiSSID);
+            Display::drawString(10, 40, statusBuf, 0xFFFF, 0x0000, 1);
+            Display::drawString(10, 55, "Uruchamiam tryb AP...", 0xFFFF, 0x0000, 1);
+            delay(3000);
+            
+            wifiMgr.startAP();
+            UI::drawAPMode("PH-Monitor-Setup", wifiMgr.getIP().c_str());
+        }
     } else {
+        // No WiFi credentials at all — go straight to AP captive portal
+        apModeActive = true;
+        Serial.println("[BOOT] Brak danych WiFi. Uruchamiam tryb AP.");
+        wifiMgr.startAP();
         UI::drawAPMode("PH-Monitor-Setup", wifiMgr.getIP().c_str());
     }
 
