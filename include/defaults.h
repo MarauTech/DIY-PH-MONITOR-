@@ -1,7 +1,20 @@
 #pragma once
 
+#if __has_include("secrets.h")
+#include "secrets.h"
+#endif
+
 #define FIRMWARE_VERSION    "2.0.0"
 #define HOSTNAME            "ph-monitor"
+
+// --- Default Admin Credentials ---
+#ifndef DEFAULT_ADMIN_USER
+#define DEFAULT_ADMIN_USER  "admin"
+#endif
+
+#ifndef DEFAULT_ADMIN_PASS
+#define DEFAULT_ADMIN_PASS  "admin"
+#endif
 
 // --- ADC / Voltage ---
 #define VOLTAGE_DIVIDER     0.6667f   // Hardware divider ratio (10k/20k)
@@ -22,7 +35,7 @@
 // --- Calibration stability ---
 #define CAL_STABILITY_SAMPLES     50
 #define CAL_STABILITY_PERIOD_MS   5000
-#define CAL_STABILITY_MAX_DEV_MV  5.0f  // Max stddev in mV for stable reading
+#define CAL_STABILITY_MAX_DEV_MV  15.0f // Max stddev in mV for stable reading
 
 // --- Calibration validation ---
 #define CAL_MIN_VOLTAGE_MV    500     // Minimum sensible voltage

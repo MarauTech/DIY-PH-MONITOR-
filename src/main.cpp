@@ -65,7 +65,7 @@ void onConfigChange() {
     }
     buzzer.setMuted(cfg.buzzerMuted);
     
-    if (cfg.mqttEnabled && wifiMgr.isConnected()) {
+    if (cfg.mqttEnabled && strlen(cfg.mqttBroker) > 0) {
         mqttMgr.begin(cfg.mqttBroker, cfg.mqttPort, cfg.mqttUser, cfg.mqttPass);
         mqttMgr.setEnabled(true);
     } else {
@@ -190,9 +190,11 @@ void setup() {
     webServer.setOTACompleteCallback(onOTAComplete);
     webServer.begin(apModeActive);
 
-    if (cfg.mqttEnabled && !apModeActive) {
+    if (cfg.mqttEnabled && strlen(cfg.mqttBroker) > 0 && !apModeActive) {
         mqttMgr.begin(cfg.mqttBroker, cfg.mqttPort, cfg.mqttUser, cfg.mqttPass);
-        mqttMgr.publishHADiscovery(cfg.deviceName);
+        mqttMgr.setEnabled(true);
+    } else {
+        mqttMgr.setEnabled(false);
     }
 
     // Initial pH reading
@@ -213,44 +215,84 @@ void loop() {
         return;
     }
     
-    if (Settings::instance().config().mqttEnabled) {
-        mqttMgr.update();
+    auto& cfg = Settings::instance().config();
+
+    if (cfg.mqttEnabled) {
+        mqttMgr.update(cfg.deviceName);
     }
 
-    // Calibration state machine evaluation
+    // Single owner of calibration state machine: loop()
+    auto calState = phSensor.updateCalibration();
     if (pendingCalType.length() > 0) {
-        auto state = phSensor.updateCalibration();
-        if (state == PhSensor::CalState::DONE) {
+        if (calState == PhSensor::CalState::DONE) {
             float v = phSensor.getCalibrationVoltage();
-            auto& cfg = Settings::instance().config();
             
-            if (pendingCalType == "neutral" || pendingCalType == "7") {
-                cfg.voltagePH7 = (int32_t)v;
-                cfg.ph7Value = 7.00f;
-            } else if (pendingCalType == "acid" || pendingCalType == "4") {
-                cfg.voltagePH4 = (int32_t)v;
-                cfg.ph4Value = 4.01f;
-            } else if (pendingCalType == "base" || pendingCalType == "9") {
-                cfg.voltagePH9 = (int32_t)v;
-                cfg.ph9Value = 9.18f;
+            // Create temporary set of calibration points to validate before committing
+            int32_t testV4 = cfg.voltagePH4;
+            int32_t testV7 = cfg.voltagePH7;
+            int32_t testV9 = cfg.voltagePH9;
+            float testP4 = cfg.ph4Value;
+            float testP7 = cfg.ph7Value;
+            float testP9 = cfg.ph9Value;
+            
+            bool isPH4 = false;
+            bool isPH7 = false;
+            bool isPH9 = false;
+            
+            if (pendingCalType == "neutral" || pendingCalType == "7" || pendingCalType == "7.00") {
+                testV7 = (int32_t)round(v);
+                testP7 = 7.00f;
+                isPH7 = true;
+            } else if (pendingCalType == "acid" || pendingCalType == "4" || pendingCalType == "4.01") {
+                testV4 = (int32_t)round(v);
+                testP4 = 4.01f;
+                isPH4 = true;
+            } else if (pendingCalType == "base" || pendingCalType == "9" || pendingCalType == "9.18") {
+                testV9 = (int32_t)round(v);
+                testP9 = 9.18f;
+                isPH9 = true;
             } else if (pendingCalType == "custom") {
                 if (pendingCalCustomPH >= 6.5f && pendingCalCustomPH <= 7.5f) {
-                    cfg.voltagePH7 = (int32_t)v;
-                    cfg.ph7Value = pendingCalCustomPH;
+                    testV7 = (int32_t)round(v);
+                    testP7 = pendingCalCustomPH;
+                    isPH7 = true;
                 } else if (pendingCalCustomPH < 6.5f) {
-                    cfg.voltagePH4 = (int32_t)v;
-                    cfg.ph4Value = pendingCalCustomPH;
+                    testV4 = (int32_t)round(v);
+                    testP4 = pendingCalCustomPH;
+                    isPH4 = true;
                 } else {
-                    cfg.voltagePH9 = (int32_t)v;
-                    cfg.ph9Value = pendingCalCustomPH;
+                    testV9 = (int32_t)round(v);
+                    testP9 = pendingCalCustomPH;
+                    isPH9 = true;
                 }
             }
             
-            cfg.calibrated = true;
-            Settings::instance().saveCalibration();
-            phSensor.setCalibrationParams(cfg.voltagePH4, cfg.voltagePH7, cfg.voltagePH9, cfg.ph4Value, cfg.ph7Value, cfg.ph9Value);
+            // Perform validation
+            String valReason = "";
+            bool valid = PhSensor::validateCalibration(testV4, testV7, testV9, &valReason);
+            if (valid) {
+                cfg.voltagePH4 = testV4;
+                cfg.voltagePH7 = testV7;
+                cfg.voltagePH9 = testV9;
+                cfg.ph4Value = testP4;
+                cfg.ph7Value = testP7;
+                cfg.ph9Value = testP9;
+                
+                if (isPH4) cfg.calibratedPH4 = true;
+                if (isPH7) cfg.calibratedPH7 = true;
+                if (isPH9) cfg.calibratedPH9 = true;
+                cfg.calibrated = Settings::instance().isCalibrationComplete();
+                
+                Settings::instance().saveCalibration();
+                phSensor.setCalibrationParams(cfg.voltagePH4, cfg.voltagePH7, cfg.voltagePH9, cfg.ph4Value, cfg.ph7Value, cfg.ph9Value);
+                phSensor.setCalibrationDone();
+                Serial.printf("[CALIB] Kalibracja punktu '%s' zakonczona sukcesem! (v=%d mV)\n", pendingCalType.c_str(), (int)round(v));
+            } else {
+                phSensor.setCalibrationFailed(valReason);
+                Serial.printf("[CALIB] Odrzucono kalibracje: %s\n", valReason.c_str());
+            }
             pendingCalType = "";
-        } else if (state == PhSensor::CalState::FAILED) {
+        } else if (calState == PhSensor::CalState::FAILED) {
             pendingCalType = "";
         }
     }
@@ -283,7 +325,6 @@ void loop() {
 
         auto alarmState = alarmMgr->update(smoothedPH);
         if (alarmMgr->stateChanged()) {
-            auto& cfg = Settings::instance().config();
             if (cfg.pushoverEnabled && strlen(cfg.pushoverUser) > 0 && strlen(cfg.pushoverToken) > 0) {
                 char msg[96];
                 if (alarmState == AlarmManager::AlarmState::ALARM_LOW) {
@@ -301,7 +342,7 @@ void loop() {
         buzzer.update(isAlarm);
 
         sysState.ph = smoothedPH;
-        sysState.voltage = rawVoltage / 1000.0f; // Voltage in Volts for UI / API
+        sysState.voltage = rawVoltage / 1000.0f; // Volts for UI
         sysState.temperature = temp;
         sysState.tempConnected = tempConn;
         sysState.alarmState = static_cast<uint8_t>(alarmState);
@@ -311,7 +352,7 @@ void loop() {
         sysState.ntpSynced = wifiMgr.isNTPSynced();
         sysState.ntpTime = wifiMgr.getTimeString();
         sysState.uptime = millis() / 1000;
-        sysState.calibrated = Settings::instance().config().calibrated;
+        sysState.calibrated = Settings::instance().isCalibrationComplete();
         sysState.pushoverStatus = static_cast<uint8_t>(pushover.getLastStatus());
         sysState.buzzerMuted = buzzer.isMuted();
         sysState.minPH = minPH;
@@ -325,7 +366,6 @@ void loop() {
         if (historyCount < HISTORY_SIZE) historyCount++;
 
         if (!otaRunning) {
-            auto& cfg = Settings::instance().config();
             UI::drawPHValue(smoothedPH, cfg.alarmLow, cfg.alarmHigh);
             UI::drawVoltage(rawVoltage / 1000.0f);
             UI::drawTemperature(tempConn ? temp : -127.0f);
@@ -335,8 +375,8 @@ void loop() {
             UI::drawUptime(sysState.uptime);
         }
 
-        if (Settings::instance().config().mqttEnabled && sysState.wifiConnected) {
-            mqttMgr.publishState(smoothedPH, temp, rawVoltage / 1000.0f, static_cast<uint8_t>(alarmState));
+        if (mqttMgr.isConnected()) {
+            mqttMgr.publishState(smoothedPH, tempConn ? temp : -127.0f, rawVoltage / 1000.0f, static_cast<uint8_t>(alarmState), wifiMgr.getRSSI());
         }
     }
 

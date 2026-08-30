@@ -7,11 +7,12 @@ class MqttManager {
 public:
     MqttManager();
     void begin(const char* broker, int port, const char* user, const char* pass);
-    void update();
+    void update(const char* deviceName);
     bool isConnected();
-    void publishState(float ph, float temp, float voltage, uint8_t alarmState);
+    void publishState(float ph, float temp, float voltage, uint8_t alarmState, int32_t rssi);
     void publishHADiscovery(const char* deviceName);
     void setEnabled(bool enabled);
+    bool isEnabled() const { return enabled; }
 
 private:
     WiFiClient wifiClient;
@@ -23,6 +24,7 @@ private:
     String userStr;
     String passStr;
     String clientIdStr;
+    bool discoverySent = false;
     
-    void reconnect();
+    bool reconnect(const char* deviceName);
 };

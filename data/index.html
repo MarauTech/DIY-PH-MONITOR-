@@ -161,9 +161,10 @@
                         <div class="calib-info">
                             <h3>Parametry</h3>
                             <ul class="param-list">
-                                <li><span>pH 7.00:</span> <strong id="cal-v7">-.--- V</strong></li>
-                                <li><span>pH 4.01:</span> <strong id="cal-v4">-.--- V</strong></li>
-                                <li><span>pH 9.18:</span> <strong id="cal-v9">-.--- V</strong></li>
+                                <li><span>pH 7.00:</span> <strong id="cal-v7">-.--- V</strong> <small id="cal-badge-7" class="cal-badge">(domyślny)</small></li>
+                                <li><span>pH 4.01:</span> <strong id="cal-v4">-.--- V</strong> <small id="cal-badge-4" class="cal-badge">(domyślny)</small></li>
+                                <li><span>pH 9.18:</span> <strong id="cal-v9">-.--- V</strong> <small id="cal-badge-9" class="cal-badge">(domyślny)</small></li>
+                                <li><span>Status:</span> <strong id="cal-complete-badge">Niekompletna</strong></li>
                                 <li><span>Kondycja:</span> <strong id="cal-health">--%</strong></li>
                             </ul>
                             <div class="live-reading">
@@ -174,20 +175,20 @@
                         <div class="calib-actions">
                             <h3>Bufory Standardowe</h3>
                             <div class="btn-group-grid">
-                                <button type="button" class="btn btn-secondary" onclick="calibrate('7.00')">Kalibruj pH 7.00</button>
-                                <button type="button" class="btn btn-secondary" onclick="calibrate('4.01')">Kalibruj pH 4.01</button>
-                                <button type="button" class="btn btn-secondary" onclick="calibrate('9.18')">Kalibruj pH 9.18</button>
-                                <button type="button" class="btn btn-danger" onclick="calibrate('reset')">Reset Do Fabrycznych</button>
+                                <button type="button" class="btn btn-secondary cal-btn" id="btn-cal-7" onclick="calibrate('7.00')">Kalibruj pH 7.00</button>
+                                <button type="button" class="btn btn-secondary cal-btn" id="btn-cal-4" onclick="calibrate('4.01')">Kalibruj pH 4.01</button>
+                                <button type="button" class="btn btn-secondary cal-btn" id="btn-cal-9" onclick="calibrate('9.18')">Kalibruj pH 9.18</button>
+                                <button type="button" class="btn btn-danger cal-btn" id="btn-cal-reset" onclick="calibrate('reset')">Reset Do Fabrycznych</button>
                             </div>
                             
                             <h3 style="margin-top: 15px;">Własny Bufor</h3>
                             <div class="custom-calib">
                                 <input type="number" step="0.01" id="cal-custom-val" placeholder="np. 6.86">
-                                <button type="button" class="btn btn-secondary" onclick="calibrateCustom()">Kalibruj</button>
+                                <button type="button" class="btn btn-secondary cal-btn" id="btn-cal-custom" onclick="calibrateCustom()">Kalibruj</button>
                             </div>
                         </div>
                     </div>
-                    <div id="calib-status-box" class="calib-status" style="display: none;">
+                    <div id="calib-status-box" class="calib-status" style="display: none; margin-top: 15px; padding: 12px; border-radius: 8px; font-weight: 500;">
                         --
                     </div>
                 </section>

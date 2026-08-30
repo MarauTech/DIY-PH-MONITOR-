@@ -178,25 +178,35 @@ Wszystkie żądania zwracają nagłówki JSON i wspierają CORS.
 
 | Metoda | Endpoint | Wymaga Auth | Opis |
 | :--- | :--- | :---: | :--- |
-| `GET` | `/api/status` | Nie | Zwraca aktualne odczyty, stan alarmu, RSSI, czas, diagnostykę i wersję |
-| `GET` | `/api/config` | **Tak** | Zwraca bieżącą konfigurację urządzenia (bez haseł i tokenów) |
+| `GET` | `/api/status` | Nie | Zwraca aktualne odczyty, stan alarmu, stan kalibracji 4/7/9, RSSI, czas, diagnostykę i wersję |
+| `GET` | `/api/config` | **Tak** | Zwraca bieżącą konfigurację urządzenia (hasła i tokeny nigdy nie są zwracane) |
 | `POST` | `/api/config` | **Tak** | Aktualizuje ustawienia progów, histerezy, pushover, MQTT, itp. |
-| `POST` | `/api/calibrate` | **Tak** | Rozpoczyna procedurę kalibracji dla wybranego punktu |
-| `GET` | `/api/calibrate/status` | Nie | Zwraca postęp i status stabilności kalibracji |
+| `POST` | `/api/calibrate` | **Tak** | Rozpoczyna procedurę kalibracji dla wybranego punktu z walidacją fizyczną |
+| `GET` | `/api/calibrate/status` | Nie | Zwraca postęp (0-100%), stan stabilności oraz szczegółowy kod błędu walidacji |
 | `GET` | `/api/history` | Nie | Zwraca ostatnie rekordy historii pomiarów z LittleFS |
 | `POST` | `/api/pushover/test` | **Tak** | Wysyła testowe powiadomienie push |
 | `POST` | `/api/reset-stats` | **Tak** | Resetuje statystyki Min/Max odczytów |
-| `GET` / `POST` | `/update` | **Tak** | Formularz i endpoint aktualizacji firmware OTA |
+| `POST` | `/save-wifi` | **Tak w STA** / Nie w AP | Zapisuje nową konfigurację WiFi (w trybie STA wymaga autoryzacji admina) |
+| `POST` | `/api/wifi/setup` | **Tak w STA** / Nie w AP | Zapisuje dane WiFi w formacie JSON (w trybie STA wymaga autoryzacji admina) |
+| `GET` / `POST` | `/update` | **Tak** | Formularz i endpoint aktualizacji firmware/LittleFS OTA |
 
 ---
 
 ## 🏠 Integracja z Home Assistant (MQTT)
 
-Po włączeniu obsługi MQTT w panelu WWW i podaniu adresu brokera, urządzenie automatycznie wysyła konfigurację **Home Assistant Auto-Discovery**. W systemie pojawią się sensory:
-- `sensor.ph_monitor_ph` — odczyn pH wody
-- `sensor.ph_monitor_temperature` — temperatura cieczy
-- `sensor.ph_monitor_voltage` — napięcie wyjściowe z sondy
-- `binary_sensor.ph_monitor_alarm` — stan alarmu progowego
+Po włączeniu obsługi MQTT w panelu WWW i podaniu adresu brokera, urządzenie automatycznie łączy się z brokerem i po udanym nawiązaniu połączenia wysyła konfigurację **Home Assistant Auto-Discovery** (z flagą `retain: true`). Discovery publikowane jest wyłącznie po nawiązaniu połączenia (i przywracane po reconnect):
+- `sensor.<id>_ph` — odczyn pH wody (`state_class: measurement`)
+- `sensor.<id>_temp` — temperatura cieczy (`device_class: temperature`)
+- `sensor.<id>_voltage` — napięcie wyjściowe z sondy (`device_class: voltage`)
+- `binary_sensor.<id>_alarm` — stan alarmu progowego (`device_class: problem`)
+- `sensor.<id>_rssi` — jakość sygnału Wi-Fi (`device_class: signal_strength`)
+
+---
+
+## 📜 Licencja
+
+Projekt udostępniony na licencji MIT. Więcej informacji w pliku `LICENSE`.
+
 
 ---
 

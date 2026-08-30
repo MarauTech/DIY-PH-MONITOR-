@@ -384,6 +384,16 @@ header {
     color: var(--text-primary);
 }
 
+.cal-badge {
+    font-size: 11px;
+    margin-left: 6px;
+}
+
+.cal-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .calib-status {
     margin-top: 16px;
     padding: 12px;

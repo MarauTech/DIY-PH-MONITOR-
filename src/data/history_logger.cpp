@@ -7,12 +7,15 @@ HistoryLogger::~HistoryLogger() {
 }
 
 bool HistoryLogger::begin() {
-    // Attempt to mount LittleFS, format if it fails
-    if (LittleFS.begin(true)) {
+    // Attempt to mount LittleFS without automatic formatting
+    if (LittleFS.begin(false)) {
         _isMounted = true;
         _recordCount = getRecordCount();
         return true;
     }
+    
+    Serial.println("[LittleFS] Blad montowania systemu plikow (automatyczne formatowanie wylaczone)");
+    _isMounted = false;
     return false;
 }
 
@@ -30,8 +33,6 @@ void HistoryLogger::logRecord(const HistoryRecord& record) {
     File f = LittleFS.open(_filename, FILE_APPEND);
     if (!f) return;
 
-    // Use StaticJsonDocument for lightweight allocation (ArduinoJson 6/7 compatible)
-    // In ArduinoJson 7 it ignores the size template argument but remains valid syntax.
 #if ARDUINOJSON_VERSION_MAJOR >= 7
     JsonDocument doc;
 #else
@@ -39,8 +40,6 @@ void HistoryLogger::logRecord(const HistoryRecord& record) {
 #endif
 
     doc["t"] = record.timestamp;
-    
-    // Format to 2 decimal places using math rounding to avoid String allocs
     doc["p"] = round(record.ph * 100.0) / 100.0;
     doc["te"] = round(record.temperature * 10.0) / 10.0;
     doc["v"] = round(record.voltage * 1000.0) / 1000.0;

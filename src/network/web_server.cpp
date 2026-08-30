@@ -43,7 +43,7 @@ input:focus{border-color:#3b82f6;outline:none}
     <button type="submit" class="btn">Zapisz i Połącz</button>
   </form>
   <div class="ota-box">
-    <p>Chcesz wgrać pliki strony WWW lub nowy firmware?</p>
+    <p>Aktualizacja oprogramowania urządzenia?</p>
     <p><a href="/update">&rarr; Przejdź do Aktualizacji OTA (/update)</a></p>
   </div>
 </div>
@@ -127,7 +127,11 @@ void WebServer::setupRoutes() {
         req->send(200, "text/html", WIFI_SETUP_HTML);
     });
 
-    server.on("/save-wifi", HTTP_POST, [](AsyncWebServerRequest *req){
+    server.on("/save-wifi", HTTP_POST, [this](AsyncWebServerRequest *req){
+        if (!isAP) {
+            if (!authenticate(req)) return;
+        }
+        
         String ssid = "";
         String pass = "";
         if (req->hasParam("ssid", true)) ssid = req->getParam("ssid", true)->value();
@@ -165,6 +169,7 @@ void WebServer::setupRoutes() {
         }
     });
     
+    // Public Status API (no secrets exposed)
     server.on("/api/status", HTTP_GET, [this](AsyncWebServerRequest *req){
         if (!sysState) {
             req->send(500, "application/json", "{\"error\":\"Brak stanu systemu\"}");
@@ -213,10 +218,17 @@ void WebServer::setupRoutes() {
         doc["ph7Value"] = cfg.ph7Value;
         doc["ph9Value"] = cfg.ph9Value;
         
+        JsonObject calObj = doc["calibration"].to<JsonObject>();
+        calObj["ph4"] = cfg.calibratedPH4;
+        calObj["ph7"] = cfg.calibratedPH7;
+        calObj["ph9"] = cfg.calibratedPH9;
+        calObj["complete"] = Settings::instance().isCalibrationComplete();
+        
         serializeJson(doc, *res);
         req->send(res);
     });
 
+    // Protected Config API (GET)
     server.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest *req){
         if (!authenticate(req)) return;
         AsyncResponseStream *res = req->beginResponseStream("application/json");
@@ -228,6 +240,7 @@ void WebServer::setupRoutes() {
         doc["alarmHoldSec"] = cfg.alarmHoldSec;
         doc["pushoverConfigured"] = (strlen(cfg.pushoverUser) > 0 && strlen(cfg.pushoverToken) > 0);
         doc["pushoverEnabled"] = cfg.pushoverEnabled;
+        doc["mqttConfigured"] = (strlen(cfg.mqttPass) > 0);
         doc["mqttEnabled"] = cfg.mqttEnabled;
         doc["mqttBroker"] = cfg.mqttBroker;
         doc["mqttPort"] = cfg.mqttPort;
@@ -236,11 +249,19 @@ void WebServer::setupRoutes() {
         doc["buzzerMuted"] = cfg.buzzerMuted;
         doc["adminUser"] = cfg.adminUser;
         doc["wifiSSID"] = cfg.wifiSSID;
-        // Never return pushover tokens or wifi passwords or admin password!
+        
+        JsonObject calObj = doc["calibration"].to<JsonObject>();
+        calObj["ph4"] = cfg.calibratedPH4;
+        calObj["ph7"] = cfg.calibratedPH7;
+        calObj["ph9"] = cfg.calibratedPH9;
+        calObj["complete"] = Settings::instance().isCalibrationComplete();
+        
+        // Never return pushover tokens, mqtt password, wifi password or admin password!
         serializeJson(doc, *res);
         req->send(res);
     });
 
+    // Protected Config API (POST)
     server.addHandler(new AsyncCallbackJsonWebHandler("/api/config", [this](AsyncWebServerRequest *req, JsonVariant &json) {
         if (!authenticate(req)) return;
         JsonObject doc = json.as<JsonObject>();
@@ -354,6 +375,7 @@ void WebServer::setupRoutes() {
         req->send(200, "application/json", "{\"status\":\"ok\"}");
     }));
 
+    // Protected Calibration trigger (POST)
     server.addHandler(new AsyncCallbackJsonWebHandler("/api/calibrate", [this](AsyncWebServerRequest *req, JsonVariant &json) {
         if (!authenticate(req)) return;
         JsonObject doc = json.as<JsonObject>();
@@ -368,6 +390,9 @@ void WebServer::setupRoutes() {
             cfg.ph4Value = DEFAULT_PH4_VALUE;
             cfg.ph7Value = DEFAULT_PH7_VALUE;
             cfg.ph9Value = DEFAULT_PH9_VALUE;
+            cfg.calibratedPH4 = false;
+            cfg.calibratedPH7 = false;
+            cfg.calibratedPH9 = false;
             cfg.calibrated = false;
             Settings::instance().saveCalibration();
             if (phSensor) {
@@ -385,27 +410,42 @@ void WebServer::setupRoutes() {
         }
     }));
 
+    // Public Read-Only Calibration status
     server.on("/api/calibrate/status", HTTP_GET, [this](AsyncWebServerRequest *req){
         JsonDocument doc;
         if (!phSensor) {
             doc["status"] = "idle";
+            doc["progress"] = 0;
         } else {
-            auto state = phSensor->updateCalibration();
+            auto state = phSensor->getCalibrationState();
             if (state == PhSensor::CalState::COLLECTING) {
                 doc["status"] = "collecting";
-                doc["message"] = "Trwa zbieranie probek i test stabilnosci...";
+                doc["progress"] = phSensor->getCalibrationProgress();
+                doc["message"] = "Trwa zbieranie probek i badanie stabilnosci...";
             } else if (state == PhSensor::CalState::DONE) {
                 doc["status"] = "done";
+                doc["progress"] = 100;
                 doc["voltage"] = phSensor->getCalibrationVoltage();
                 doc["stdDev"] = phSensor->getCalibrationStdDev();
-                doc["message"] = "Pomiar stabilny. Zapisano punkt kalibracji.";
+                doc["message"] = "Kalibracja zakonczona pomyslnie.";
             } else if (state == PhSensor::CalState::FAILED) {
                 doc["status"] = "failed";
-                doc["error"] = "measurement_not_stable";
+                doc["progress"] = 100;
+                String err = phSensor->getCalibrationError();
+                doc["error"] = err.length() > 0 ? err : "calibration_not_stable";
                 doc["stdDev"] = phSensor->getCalibrationStdDev();
-                doc["message"] = "Sygnal niestabilny (odchylenie > 5mV). Poczekaj na ustabilizowanie sondy i sprobuj ponownie.";
+                if (err == "invalid_voltage") {
+                    doc["message"] = "Napiecie poza zakresem fizycznym (0.5V - 4.5V)";
+                } else if (err == "points_too_close") {
+                    doc["message"] = "Zbyt mala roznica napiec miedzy punktami (<100mV)";
+                } else if (err == "invalid_slope") {
+                    doc["message"] = "Nieprawidlowy kierunek nachylenia (wymagane vPH4 > vPH7 > vPH9)";
+                } else {
+                    doc["message"] = "Pomiar niestabilny (odchylenie > 15mV). Sonda musi ustabilizowac sie w buforze.";
+                }
             } else {
                 doc["status"] = "idle";
+                doc["progress"] = 0;
             }
         }
         AsyncResponseStream *res = req->beginResponseStream("application/json");
@@ -413,6 +453,7 @@ void WebServer::setupRoutes() {
         req->send(res);
     });
 
+    // Public History API
     server.on("/api/history", HTTP_GET, [this](AsyncWebServerRequest *req){
         int limit = 100;
         if (req->hasParam("limit")) {
@@ -428,6 +469,7 @@ void WebServer::setupRoutes() {
         }
     });
 
+    // Protected Pushover Test (POST)
     server.on("/api/pushover/test", HTTP_POST, [this](AsyncWebServerRequest *req){
         if (!authenticate(req)) return;
         auto& cfg = Settings::instance().config();
@@ -445,6 +487,7 @@ void WebServer::setupRoutes() {
         }
     });
     
+    // Protected Reset Stats (POST)
     server.on("/api/reset-stats", HTTP_POST, [this](AsyncWebServerRequest *req){
         if (!authenticate(req)) return;
         if (sysState) {
@@ -453,7 +496,11 @@ void WebServer::setupRoutes() {
         req->send(200, "application/json", "{\"status\":\"ok\"}");
     });
 
-    server.addHandler(new AsyncCallbackJsonWebHandler("/api/wifi/setup", [](AsyncWebServerRequest *req, JsonVariant &json) {
+    // Protected in STA / Public in AP WiFi setup JSON
+    server.addHandler(new AsyncCallbackJsonWebHandler("/api/wifi/setup", [this](AsyncWebServerRequest *req, JsonVariant &json) {
+        if (!isAP) {
+            if (!authenticate(req)) return;
+        }
         JsonObject doc = json.as<JsonObject>();
         const char* ssid = doc["ssid"];
         const char* pass = doc["password"];
@@ -471,17 +518,21 @@ void WebServer::setupRoutes() {
         ESP.restart();
     }));
 
-    server.on("/update", HTTP_GET, [](AsyncWebServerRequest *req){
+    // Protected OTA Endpoints (GET and POST)
+    server.on("/update", HTTP_GET, [this](AsyncWebServerRequest *req){
+        if (!authenticate(req)) return;
         req->send(200, "text/html", "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Aktualizacja OTA</title><style>body{font-family:sans-serif;background:#0b0e18;color:#dde1ef;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}.box{background:#131726;padding:2rem;border-radius:12px;border:1px solid #1e2235;text-align:center;max-width:400px}input[type=file]{margin:1rem 0;color:#fff}input[type=submit]{background:#2563eb;color:#fff;border:none;padding:0.6rem 1.5rem;border-radius:6px;cursor:pointer;font-weight:600}a{color:#60a5fa;text-decoration:none;display:inline-block;margin-top:1rem}</style></head><body><div class='box'><h2>Aktualizacja OTA</h2><p style='color:#718096;font-size:0.85rem'>Wybierz plik <b>firmware.bin</b> lub <b>littlefs.bin</b></p><form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update' required><br><input type='submit' value='Rozpocznij aktualizacje'></form><a href='/'>&larr; Powrot</a></div></body></html>");
     });
     
     server.on("/update", HTTP_POST, [this](AsyncWebServerRequest *req){
+        if (!authenticate(req)) return;
         bool shouldReboot = !Update.hasError();
         AsyncWebServerResponse *res = req->beginResponse(200, "text/plain", shouldReboot ? "OK" : "FAIL");
         res->addHeader("Connection", "close");
         req->send(res);
         if (onOTAComplete) onOTAComplete(shouldReboot);
     }, [this](AsyncWebServerRequest *req, String filename, size_t index, uint8_t *data, size_t len, bool final){
+        if (!authenticate(req)) return;
         if (!index) {
             int cmd = (filename.indexOf("spiffs") > -1 || filename.indexOf("littlefs") > -1) ? U_SPIFFS : U_FLASH;
             if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {

@@ -246,9 +246,55 @@ async function fetchStatus() {
         document.getElementById('val-uptime').textContent = formatTime(data.uptime || 0);
         document.getElementById('val-rssi').textContent = data.wifiRSSI || '--';
         
-        // Live calibration readout
+        // Live calibration readout & parameters
         document.getElementById('cal-live-v').textContent = (data.voltage || 0).toFixed(3) + ' V';
         document.getElementById('cal-live-ph').textContent = (data.ph || 7.0).toFixed(2) + ' pH';
+        
+        if (data.voltagePH7 !== undefined) {
+            document.getElementById('cal-v7').textContent = (data.voltagePH7 / 1000).toFixed(3) + ' V';
+        }
+        if (data.voltagePH4 !== undefined) {
+            document.getElementById('cal-v4').textContent = (data.voltagePH4 / 1000).toFixed(3) + ' V';
+        }
+        if (data.voltagePH9 !== undefined) {
+            document.getElementById('cal-v9').textContent = (data.voltagePH9 / 1000).toFixed(3) + ' V';
+        }
+        
+        if (data.calibration) {
+            const b7 = document.getElementById('cal-badge-7');
+            if (b7) {
+                b7.textContent = data.calibration.ph7 ? '(skalibrowany)' : '(domyślny)';
+                b7.style.color = data.calibration.ph7 ? '#4ade80' : '#718096';
+            }
+            const b4 = document.getElementById('cal-badge-4');
+            if (b4) {
+                b4.textContent = data.calibration.ph4 ? '(skalibrowany)' : '(domyślny)';
+                b4.style.color = data.calibration.ph4 ? '#4ade80' : '#718096';
+            }
+            const b9 = document.getElementById('cal-badge-9');
+            if (b9) {
+                b9.textContent = data.calibration.ph9 ? '(skalibrowany)' : '(domyślny)';
+                b9.style.color = data.calibration.ph9 ? '#4ade80' : '#718096';
+            }
+            const bComp = document.getElementById('cal-complete-badge');
+            if (bComp) {
+                bComp.textContent = data.calibration.complete ? 'Pełna (3-punktowa)' : 'Częściowa / Domyślna';
+                bComp.style.color = data.calibration.complete ? '#4ade80' : '#facc15';
+            }
+        }
+        
+        // Electrode health estimation
+        if (data.voltagePH4 && data.voltagePH7 && data.voltagePH9) {
+            const slopeAcid = (data.voltagePH4 - data.voltagePH7) / 2.99; // mV per pH unit (ideal ~59.16 mV)
+            const slopeBase = (data.voltagePH7 - data.voltagePH9) / 2.18; // mV per pH unit
+            const avgSlope = (slopeAcid + slopeBase) / 2.0;
+            const healthPct = Math.min(100, Math.max(0, Math.round((avgSlope / 59.16) * 100)));
+            const healthEl = document.getElementById('cal-health');
+            if (healthEl) {
+                healthEl.textContent = healthPct + '%';
+                healthEl.style.color = healthPct > 80 ? '#4ade80' : (healthPct > 60 ? '#facc15' : '#f87171');
+            }
+        }
         
         // Live chart append if empty
         if (!state.chartData || state.chartData.length === 0) {
@@ -453,12 +499,20 @@ document.getElementById('btn-dl-csv').addEventListener('click', () => {
 // Calibration
 let calibPollInterval = null;
 
+function setCalibButtonsDisabled(disabled) {
+    document.querySelectorAll('.cal-btn').forEach(b => {
+        b.disabled = disabled;
+    });
+}
+
 async function calibrate(type, customVal = 0) {
     const statusBox = document.getElementById('calib-status-box');
     statusBox.style.display = 'block';
     statusBox.textContent = 'Inicjalizacja kalibracji...';
     statusBox.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
     statusBox.style.color = '#60a5fa';
+    
+    setCalibButtonsDisabled(true);
     
     let endpointType = type;
     if (type === '7.00') endpointType = 'neutral';
@@ -472,16 +526,35 @@ async function calibrate(type, customVal = 0) {
             body: JSON.stringify({ type: endpointType, customPH: customVal })
         });
         
-        if(!res.ok) {
-            throw new Error('Błąd rozpoczęcia kalibracji');
+        if (res.status === 401) {
+            setCalibButtonsDisabled(false);
+            statusBox.textContent = 'Wymagane logowanie administratora (Basic Auth)';
+            statusBox.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+            statusBox.style.color = '#f87171';
+            return;
+        }
+        
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.message || 'Błąd rozpoczęcia kalibracji');
+        }
+        
+        if (type === 'reset') {
+            statusBox.textContent = 'Kalibracja zresetowana do wartości fabrycznych!';
+            statusBox.style.backgroundColor = 'rgba(74, 222, 128, 0.2)';
+            statusBox.style.color = '#4ade80';
+            setCalibButtonsDisabled(false);
+            fetchStatus();
+            return;
         }
         
         statusBox.textContent = 'Zbieranie i analiza stabilności próbek (5s)...';
         
-        if(calibPollInterval) clearInterval(calibPollInterval);
+        if (calibPollInterval) clearInterval(calibPollInterval);
         calibPollInterval = setInterval(pollCalibration, 500);
         
     } catch(err) {
+        setCalibButtonsDisabled(false);
         statusBox.textContent = 'Błąd: ' + err.message;
         statusBox.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
         statusBox.style.color = '#f87171';
@@ -504,18 +577,21 @@ async function pollCalibration() {
         const statusBox = document.getElementById('calib-status-box');
         
         if (data.status === 'collecting') {
-            statusBox.textContent = data.message || 'Trwa badanie stabilności sygnału...';
+            const prog = data.progress !== undefined ? ` (${data.progress}%)` : '';
+            statusBox.textContent = (data.message || 'Trwa badanie stabilności sygnału...') + prog;
             statusBox.style.backgroundColor = 'rgba(59, 130, 246, 0.15)';
             statusBox.style.color = '#60a5fa';
         } else if (data.status === 'done') {
             clearInterval(calibPollInterval);
+            setCalibButtonsDisabled(false);
             statusBox.textContent = `${data.message || 'Kalibracja zakończona pomyślnie!'} (Napięcie: ${(data.voltage/1000).toFixed(3)} V, stdDev: ${(data.stdDev||0).toFixed(2)} mV)`;
             statusBox.style.backgroundColor = 'rgba(74, 222, 128, 0.2)';
             statusBox.style.color = '#4ade80';
             fetchStatus();
         } else if (data.status === 'failed') {
             clearInterval(calibPollInterval);
-            statusBox.textContent = data.message || 'Błąd: Pomiar niestabilny. Odczekaj na ustabilizowanie sondy.';
+            setCalibButtonsDisabled(false);
+            statusBox.textContent = 'Błąd kalibracji: ' + (data.message || data.error || 'Pomiar niestabilny');
             statusBox.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
             statusBox.style.color = '#f87171';
         }

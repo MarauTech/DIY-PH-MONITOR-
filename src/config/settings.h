@@ -12,7 +12,12 @@ struct Config {
     float ph4Value = DEFAULT_PH4_VALUE;
     float ph7Value = DEFAULT_PH7_VALUE;
     float ph9Value = DEFAULT_PH9_VALUE;
-    bool calibrated = false;
+    
+    // Per-point calibration status
+    bool calibratedPH4 = false;
+    bool calibratedPH7 = false;
+    bool calibratedPH9 = false;
+    bool calibrated = false; // complete
     
     // Alarm
     float alarmLow = DEFAULT_ALARM_LOW;
@@ -25,8 +30,8 @@ struct Config {
     char wifiPass[65] = "";
     
     // Admin auth
-    char adminUser[17] = "admin";
-    char adminPass[33] = "admin";
+    char adminUser[17] = DEFAULT_ADMIN_USER;
+    char adminPass[33] = DEFAULT_ADMIN_PASS;
     
     // Pushover
     bool pushoverEnabled = false;
@@ -63,6 +68,7 @@ public:
     
     Config& config();
     bool hasWifiCredentials();
+    bool isCalibrationComplete() const;
     
     static bool validateAlarmConfig(float low, float high, float hyst);
     static bool validateMqttPort(int port);

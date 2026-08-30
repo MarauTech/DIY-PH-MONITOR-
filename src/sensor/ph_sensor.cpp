@@ -7,15 +7,16 @@
 #define PIN_PH_ANALOG 34
 #endif
 #ifndef VOLTAGE_DIVIDER
-#define VOLTAGE_DIVIDER 1.0f
+#define VOLTAGE_DIVIDER 0.6667f
 #endif
 #ifndef EMA_ALPHA
-#define EMA_ALPHA 0.2f
+#define EMA_ALPHA 0.05f
 #endif
 
-PhSensor::PhSensor() : lastVoltage(0), voltagePH4(1500), voltagePH7(1000), voltagePH9(700),
-                       ph4Value(4.01f), ph7Value(7.00f), ph9Value(9.18f),
-                       calState(CalState::IDLE), calSampleCount(0), calResultVoltage(0), calResultStdDev(0) {}
+PhSensor::PhSensor() : lastVoltage(0), voltagePH4(DEFAULT_VOLTAGE_PH4), voltagePH7(DEFAULT_VOLTAGE_PH7), voltagePH9(DEFAULT_VOLTAGE_PH9),
+                       ph4Value(DEFAULT_PH4_VALUE), ph7Value(DEFAULT_PH7_VALUE), ph9Value(DEFAULT_PH9_VALUE),
+                       calState(CalState::IDLE), calStartTime(0), calLastSampleTime(0), calErrorStr(""),
+                       calSampleCount(0), calResultVoltage(0), calResultStdDev(0) {}
 
 void PhSensor::begin() {
     analogReadResolution(12);
@@ -84,6 +85,7 @@ PhSensor::CalState PhSensor::startCalibration() {
     calSampleCount = 0;
     calResultVoltage = 0;
     calResultStdDev = 0;
+    calErrorStr = "";
     return calState;
 }
 
@@ -102,6 +104,7 @@ PhSensor::CalState PhSensor::updateCalibration() {
     if (now - calStartTime >= CAL_STABILITY_PERIOD_MS) {
         if (calSampleCount == 0) {
             calState = CalState::FAILED;
+            calErrorStr = "calibration_not_stable";
             return calState;
         }
         
@@ -121,11 +124,17 @@ PhSensor::CalState PhSensor::updateCalibration() {
         
         if (calResultStdDev > CAL_STABILITY_MAX_DEV_MV) {
             calState = CalState::FAILED;
+            calErrorStr = "calibration_not_stable";
         } else {
             calState = CalState::DONE;
+            calErrorStr = "";
         }
     }
     
+    return calState;
+}
+
+PhSensor::CalState PhSensor::getCalibrationState() const {
     return calState;
 }
 
@@ -137,21 +146,43 @@ float PhSensor::getCalibrationStdDev() const {
     return calResultStdDev;
 }
 
+int PhSensor::getCalibrationProgress() const {
+    if (calState == CalState::IDLE) return 0;
+    if (calState == CalState::DONE || calState == CalState::FAILED) return 100;
+    uint32_t elapsed = millis() - calStartTime;
+    if (elapsed >= CAL_STABILITY_PERIOD_MS) return 100;
+    return (int)((elapsed * 100) / CAL_STABILITY_PERIOD_MS);
+}
+
+String PhSensor::getCalibrationError() const {
+    return calErrorStr;
+}
+
+void PhSensor::setCalibrationDone() {
+    calState = CalState::DONE;
+    calErrorStr = "";
+}
+
+void PhSensor::setCalibrationFailed(const String& err) {
+    calState = CalState::FAILED;
+    calErrorStr = err;
+}
+
 bool PhSensor::validateCalibration(int32_t vPH4, int32_t vPH7, int32_t vPH9, String* reason) {
     if (vPH4 < CAL_MIN_VOLTAGE_MV || vPH4 > CAL_MAX_VOLTAGE_MV ||
         vPH7 < CAL_MIN_VOLTAGE_MV || vPH7 > CAL_MAX_VOLTAGE_MV ||
         vPH9 < CAL_MIN_VOLTAGE_MV || vPH9 > CAL_MAX_VOLTAGE_MV) {
-        if (reason) *reason = "Napiecie poza zakresem";
+        if (reason) *reason = "invalid_voltage";
         return false;
     }
     
     if (abs(vPH4 - vPH7) < CAL_MIN_POINT_DIFF_MV || abs(vPH7 - vPH9) < CAL_MIN_POINT_DIFF_MV) {
-        if (reason) *reason = "Zbyt mala roznica miedzy punktami";
+        if (reason) *reason = "points_too_close";
         return false;
     }
     
     if (vPH4 <= vPH7 || vPH7 <= vPH9) {
-        if (reason) *reason = "Nieprawidlowe nachylenie, napiecia musza byc vPH4 > vPH7 > vPH9";
+        if (reason) *reason = "invalid_slope";
         return false;
     }
     

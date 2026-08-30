@@ -16,8 +16,15 @@ public:
 
     CalState startCalibration();
     CalState updateCalibration();
+    
+    CalState getCalibrationState() const;
     float getCalibrationVoltage() const;
     float getCalibrationStdDev() const;
+    int getCalibrationProgress() const;
+    String getCalibrationError() const;
+    
+    void setCalibrationDone();
+    void setCalibrationFailed(const String& err);
 
     static bool validateCalibration(int32_t vPH4, int32_t vPH7, int32_t vPH9, String* reason = nullptr);
 
@@ -36,6 +43,7 @@ private:
     CalState calState;
     uint32_t calStartTime;
     uint32_t calLastSampleTime;
+    String calErrorStr;
     
     static constexpr uint32_t CAL_SAMPLE_INTERVAL_MS = 50; 
     static constexpr size_t CAL_MAX_SAMPLES = CAL_STABILITY_PERIOD_MS / CAL_SAMPLE_INTERVAL_MS;

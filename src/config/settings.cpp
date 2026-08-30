@@ -16,7 +16,11 @@ void Settings::load() {
     _config.ph4Value = _prefs.getFloat("ph4Val", DEFAULT_PH4_VALUE);
     _config.ph7Value = _prefs.getFloat("ph7Val", DEFAULT_PH7_VALUE);
     _config.ph9Value = _prefs.getFloat("ph9Val", DEFAULT_PH9_VALUE);
-    _config.calibrated = _prefs.getBool("calib", false);
+    
+    _config.calibratedPH4 = _prefs.getBool("cPh4", false);
+    _config.calibratedPH7 = _prefs.getBool("cPh7", false);
+    _config.calibratedPH9 = _prefs.getBool("cPh9", false);
+    _config.calibrated = _prefs.getBool("calib", false) || (_config.calibratedPH4 && _config.calibratedPH7 && _config.calibratedPH9);
     
     _config.alarmLow = _prefs.getFloat("alLow", DEFAULT_ALARM_LOW);
     _config.alarmHigh = _prefs.getFloat("alHigh", DEFAULT_ALARM_HIGH);
@@ -26,8 +30,8 @@ void Settings::load() {
     _prefs.getString("wifiSsid", "").toCharArray(_config.wifiSSID, sizeof(_config.wifiSSID));
     _prefs.getString("wifiPass", "").toCharArray(_config.wifiPass, sizeof(_config.wifiPass));
     
-    _prefs.getString("adUser", "admin").toCharArray(_config.adminUser, sizeof(_config.adminUser));
-    _prefs.getString("adPass", "admin").toCharArray(_config.adminPass, sizeof(_config.adminPass));
+    _prefs.getString("adUser", DEFAULT_ADMIN_USER).toCharArray(_config.adminUser, sizeof(_config.adminUser));
+    _prefs.getString("adPass", DEFAULT_ADMIN_PASS).toCharArray(_config.adminPass, sizeof(_config.adminPass));
     
     _config.pushoverEnabled = _prefs.getBool("poEna", false);
     _prefs.getString("poUser", "").toCharArray(_config.pushoverUser, sizeof(_config.pushoverUser));
@@ -54,6 +58,9 @@ void Settings::save() {
     _prefs.putFloat("ph4Val", _config.ph4Value);
     _prefs.putFloat("ph7Val", _config.ph7Value);
     _prefs.putFloat("ph9Val", _config.ph9Value);
+    _prefs.putBool("cPh4", _config.calibratedPH4);
+    _prefs.putBool("cPh7", _config.calibratedPH7);
+    _prefs.putBool("cPh9", _config.calibratedPH9);
     _prefs.putBool("calib", _config.calibrated);
     
     _prefs.putFloat("alLow", _config.alarmLow);
@@ -91,6 +98,9 @@ void Settings::saveCalibration() {
     _prefs.putFloat("ph4Val", _config.ph4Value);
     _prefs.putFloat("ph7Val", _config.ph7Value);
     _prefs.putFloat("ph9Val", _config.ph9Value);
+    _prefs.putBool("cPh4", _config.calibratedPH4);
+    _prefs.putBool("cPh7", _config.calibratedPH7);
+    _prefs.putBool("cPh9", _config.calibratedPH9);
     _prefs.putBool("calib", _config.calibrated);
     _prefs.end();
 }
@@ -151,6 +161,10 @@ Config& Settings::config() {
 
 bool Settings::hasWifiCredentials() {
     return strlen(_config.wifiSSID) > 0;
+}
+
+bool Settings::isCalibrationComplete() const {
+    return _config.calibratedPH4 && _config.calibratedPH7 && _config.calibratedPH9;
 }
 
 bool Settings::validateAlarmConfig(float low, float high, float hyst) {
