@@ -243,6 +243,13 @@ void loop() {
                 testV7 = (int32_t)round(v);
                 testP7 = 7.00f;
                 isPH7 = true;
+                // If pH4 or pH9 were not yet user-calibrated, adapt their default reference relative to new pH7 offset
+                if (!cfg.calibratedPH4) {
+                    testV4 = testV7 + (DEFAULT_VOLTAGE_PH4 - DEFAULT_VOLTAGE_PH7);
+                }
+                if (!cfg.calibratedPH9) {
+                    testV9 = testV7 - (DEFAULT_VOLTAGE_PH7 - DEFAULT_VOLTAGE_PH9);
+                }
             } else if (pendingCalType == "acid" || pendingCalType == "4" || pendingCalType == "4.01") {
                 testV4 = (int32_t)round(v);
                 testP4 = 4.01f;

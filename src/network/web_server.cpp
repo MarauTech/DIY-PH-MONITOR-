@@ -119,6 +119,7 @@ void WebServer::setupRoutes() {
         if (isAP || !LittleFS.exists("/index.html")) {
             req->send(200, "text/html", WIFI_SETUP_HTML);
         } else {
+            if (!authenticate(req)) return;
             req->send(LittleFS, "/index.html", "text/html");
         }
     });
