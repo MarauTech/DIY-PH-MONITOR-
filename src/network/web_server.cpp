@@ -3,6 +3,7 @@
 #include <Update.h>
 #include <AsyncJson.h>
 #include "defaults.h"
+#include "html_content.h"
 
 static const char WIFI_SETUP_HTML[] PROGMEM = R"rawhtml(
 <!DOCTYPE html>
@@ -116,10 +117,14 @@ void WebServer::setupRoutes() {
     server.on("/ncsi.txt", HTTP_GET, [](AsyncWebServerRequest *req){ req->redirect("http://192.168.4.1/"); });
 
     server.on("/", HTTP_GET, [this](AsyncWebServerRequest *req){
-        if (isAP || !LittleFS.exists("/index.html")) {
+        if (isAP) {
             req->send(200, "text/html", WIFI_SETUP_HTML);
         } else {
-            req->send(LittleFS, "/index.html", "text/html");
+            AsyncWebServerResponse *res = req->beginResponse_P(200, "text/html", INDEX_HTML);
+            res->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+            res->addHeader("Pragma", "no-cache");
+            res->addHeader("Expires", "-1");
+            req->send(res);
         }
     });
     
@@ -154,19 +159,15 @@ void WebServer::setupRoutes() {
     });
 
     server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *req){
-        if (LittleFS.exists("/style.css")) {
-            req->send(LittleFS, "/style.css", "text/css");
-        } else {
-            req->send(404, "text/plain", "Not Found");
-        }
+        AsyncWebServerResponse *res = req->beginResponse_P(200, "text/css", STYLE_CSS);
+        res->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        req->send(res);
     });
     
     server.on("/app.js", HTTP_GET, [](AsyncWebServerRequest *req){
-        if (LittleFS.exists("/app.js")) {
-            req->send(LittleFS, "/app.js", "application/javascript");
-        } else {
-            req->send(404, "text/plain", "Not Found");
-        }
+        AsyncWebServerResponse *res = req->beginResponse_P(200, "application/javascript", APP_JS);
+        res->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        req->send(res);
     });
     
     // Public Status API (no secrets exposed)

@@ -1,0 +1,38 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Outer Shield Hexagon Ring -->
+    <path
+        android:fillColor="#131726"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2.5"
+        android:pathData="M54,18 L88,38 L88,76 L54,96 L20,76 L20,38 Z" />
+
+    <!-- Calibrated Water Drop -->
+    <path
+        android:fillColor="#00F2FE"
+        android:pathData="M54,28 C54,28 74,58 74,72 C74,84 65,92 54,92 C43,92 34,84 34,72 C34,58 54,28 54,28 Z" />
+
+    <!-- Measuring Probe Ring -->
+    <path
+        android:fillColor="#0B0E18"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:pathData="M54,75m-9,0a9,9 0 1,0 18,0a9,9 0 1,0 -18,0" />
+
+    <!-- Core Electrode -->
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M54,75m-4,0a4,4 0 1,0 8,0a4,4 0 1,0 -8,0" />
+
+    <!-- Digital Pulse Arc -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M43,62 C48,58 60,58 65,62" />
+</vector>

@@ -33,9 +33,9 @@
 #define DEFAULT_PH9_VALUE    9.18f
 
 // --- Calibration stability ---
-#define CAL_STABILITY_SAMPLES     50
-#define CAL_STABILITY_PERIOD_MS   5000
-#define CAL_STABILITY_MAX_DEV_MV  15.0f // Max stddev in mV for stable reading
+#define CAL_STABILITY_SAMPLES     30
+#define CAL_STABILITY_PERIOD_MS   3000  // 3 seconds
+#define CAL_STABILITY_MAX_DEV_MV  50.0f // Tolerant to ADC/wiring ripple
 
 // --- Calibration validation ---
 #define CAL_MIN_VOLTAGE_MV    500     // Minimum sensible voltage

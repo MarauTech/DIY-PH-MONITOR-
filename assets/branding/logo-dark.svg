@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" width="100%" height="100%">
+  <rect width="100%" height="100%" fill="#0B0E18" rx="16" />
+  <defs>
+    <linearGradient id="dropGradDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F2FE" />
+      <stop offset="50%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#10B981" />
+    </linearGradient>
+    <linearGradient id="ringGradDark" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#38BDF8" stop-opacity="0.3" />
+    </linearGradient>
+    <linearGradient id="textGradDark" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#E2E8F0" />
+    </linearGradient>
+    <linearGradient id="accentGradDark" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#34D399" />
+    </linearGradient>
+    <filter id="glowDark" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Symbol -->
+  <g transform="translate(40, 20)">
+    <circle cx="100" cy="100" r="85" fill="#38BDF8" opacity="0.08" filter="url(#glowDark)" />
+    <polygon points="100,15 175,58 175,142 100,185 25,142 25,58" fill="#131726" stroke="url(#ringGradDark)" stroke-width="3.5" />
+    <line x1="60" y1="75" x2="140" y2="75" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.4" />
+    <line x1="50" y1="100" x2="150" y2="100" stroke="#34D399" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.6" />
+    <line x1="60" y1="125" x2="140" y2="125" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.4" />
+    <path d="M100,35 C100,35 145,95 145,125 C145,150 125,170 100,170 C75,170 55,150 55,125 C55,95 100,35 100,35 Z" fill="url(#dropGradDark)" />
+    <circle cx="100" cy="130" r="18" fill="#0B0E18" stroke="#FFFFFF" stroke-width="3" />
+    <circle cx="100" cy="130" r="8" fill="#00E676" filter="url(#glowDark)" />
+    <path d="M78,105 A32,32 0 0,1 122,105" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.9" />
+    <path d="M85,90 A45,45 0 0,1 115,90" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.6" />
+  </g>
+
+  <!-- Typography -->
+  <g transform="translate(260, 45)">
+    <text x="0" y="65" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="52" font-weight="900" fill="url(#textGradDark)" letter-spacing="1.5">
+      Marau<tspan fill="#38BDF8">Tech</tspan>
+    </text>
+    
+    <text x="3" y="115" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="28" font-weight="700" fill="url(#accentGradDark)" letter-spacing="4">
+      pH MONITOR
+    </text>
+
+    <g transform="translate(230, 94)">
+      <rect x="0" y="0" width="70" height="26" rx="13" fill="#1E293B" stroke="#38BDF8" stroke-width="1.5" />
+      <text x="35" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="800" fill="#38BDF8" text-anchor="middle">v2.0</text>
+    </g>
+
+    <text x="4" y="152" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif" font-size="14" font-weight="500" fill="#94A3B8" letter-spacing="1">
+      Precision IoT pH Monitoring System for Aquariums &amp; Labs
+    </text>
+  </g>
+</svg>

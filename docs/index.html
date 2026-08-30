@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>MarauTech pH Monitor v2.0 | Open Source ESP32 Precision pH System & Android App</title>
+  <meta name="description" content="Professional open source ESP32-based precision pH monitoring system with local web dashboard, native Jetpack Compose Android app, home screen widgets, 3-point calibration, and Home Assistant MQTT integration.">
+  
+  <!-- Open Graph / Facebook / Discord -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://marautech.github.io/DIY-PH-MONITOR-/">
+  <meta property="og:title" content="MarauTech pH Monitor v2.0">
+  <meta property="og:description" content="Open source precision pH monitoring system for ESP32 and native Android app with local LAN communication.">
+  <meta property="og:image" content="assets/logo.svg">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:title" content="MarauTech pH Monitor v2.0">
+  <meta property="twitter:description" content="Open source precision pH monitoring system for ESP32 and native Android app.">
+  <meta property="twitter:image" content="assets/logo.svg">
+
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header>
+    <div class="container navbar">
+      <a href="#" class="nav-brand">
+        <img src="assets/favicon.svg" alt="MarauTech Logo">
+        <span>Marau<span style="color: var(--primary-cyan);">Tech</span> pH Monitor</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#android-app">Android App</a></li>
+        <li><a href="#hardware">Hardware</a></li>
+        <li><a href="#api">REST API</a></li>
+        <li><a href="#downloads">Downloads</a></li>
+        <li><a href="https://github.com/MarauTech/DIY-PH-MONITOR-" class="btn-pill btn-primary" target="_blank">GitHub</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">
+        <span>🚀 Official Release v2.0.0</span>
+      </div>
+      <h1 class="hero-title">
+        Precision pH Monitoring.<br>
+        <span>Engineered for Reliability.</span>
+      </h1>
+      <p class="hero-desc">
+        A complete open source ecosystem for aquariums, hydroponics, and laboratories. Featuring calibrated ESP32 firmware, real-time web dashboard, Home Assistant MQTT, and a native Material 3 Android app with home screen widgets.
+      </p>
+
+      <div class="hero-actions" id="downloads">
+        <a href="https://github.com/MarauTech/DIY-PH-MONITOR-/releases/latest" class="btn-pill btn-primary" style="padding: 12px 28px; font-size: 1rem;">
+          ⚡ Get v2.0.0 Release
+        </a>
+        <a href="#android-app" class="btn-pill btn-secondary" style="padding: 12px 24px; font-size: 1rem;">
+          📱 Android App APK
+        </a>
+        <a href="https://github.com/MarauTech/DIY-PH-MONITOR-" class="btn-pill btn-secondary" style="padding: 12px 24px; font-size: 1rem;" target="_blank">
+          ⭐ View on GitHub
+        </a>
+      </div>
+
+      <!-- Hero Visual Card -->
+      <div class="hero-preview-card">
+        <img src="assets/logo.svg" alt="MarauTech pH Monitor Logo" style="max-width: 100%; height: auto; max-height: 220px;">
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Features Grid -->
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Core Features</div>
+        <h2 class="section-title">Designed for Accuracy & Independence</h2>
+        <p class="section-desc">Zero cloud lock-in. Everything communicates directly over your local Wi-Fi network with industrial-grade stability.</p>
+      </div>
+
+      <div class="grid-3">
+        <!-- Feature 1 -->
+        <div class="card">
+          <div class="card-icon">🎯</div>
+          <h3 class="card-title">3-Point Calibration & Stability</h3>
+          <p class="card-text">
+            Calibrate with standard buffers (pH 4.01, 7.00, 9.18) or custom solutions. Live sample standard deviation analysis guarantees measurement stability before locking values.
+          </p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="card">
+          <div class="card-icon">⚡</div>
+          <h3 class="card-title">Direct LAN Communication</h3>
+          <p class="card-text">
+            Connects directly to the ESP32 IP address via cleartext HTTP. No subscriptions, no external cloud dependencies, and zero latency.
+          </p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="card">
+          <div class="card-icon">📱</div>
+          <h3 class="card-title">Native Android App & Widgets</h3>
+          <p class="card-text">
+            Built with modern Kotlin and Jetpack Compose. Includes 3 customizable home screen widgets (Small, Medium, Large) for glanceable pH and temperature readings.
+          </p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="card">
+          <div class="card-icon">🔔</div>
+          <h3 class="card-title">Intelligent Background Alerts</h3>
+          <p class="card-text">
+            WorkManager-driven background monitoring notifies you only on state transitions (NORMAL to LOW/HIGH pH), eliminating notification spam.
+          </p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="card">
+          <div class="card-icon">🏡</div>
+          <h3 class="card-title">Home Assistant & Pushover</h3>
+          <p class="card-text">
+            Native MQTT with Home Assistant auto-discovery, live entity states, and Pushover mobile emergency push alerts when thresholds are breached.
+          </p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="card">
+          <div class="card-icon">📊</div>
+          <h3 class="card-title">24h History Logging (LittleFS)</h3>
+          <p class="card-text">
+            Automatic round-robin JSONL history logging on LittleFS flash storage. View interactive historical graphs on both the web panel and Android app.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Android App Showcase Section -->
+  <section class="section" id="android-app">
+    <div class="container">
+      <div class="app-showcase">
+        <div>
+          <div class="section-tag">Mobile Experience</div>
+          <h2 class="section-title">Native Android App (Jetpack Compose)</h2>
+          <p class="section-desc">
+            A premium, dedicated Android application designed to make aquarium and reservoir monitoring effortless.
+          </p>
+
+          <ul class="app-features-list">
+            <li><span class="check">✓</span> <b>Hero Dashboard:</b> Large bold pH readout, probe voltage, probe health, and animated status badges.</li>
+            <li><span class="check">✓</span> <b>3 Home Screen Widgets:</b> Compact, Medium, and Full widgets updating live on your launcher.</li>
+            <li><span class="check">✓</span> <b>History Visualizer:</b> Custom Canvas line graphs for pH, temperature, and voltage with 1h–24h filtering.</li>
+            <li><span class="check">✓</span> <b>Full Calibration Assistant:</b> Interactive step-by-step 3-point calibration with real-time countdown.</li>
+            <li><span class="check">✓</span> <b>Secure Storage:</b> Admin credentials encrypted with Android Keystore.</li>
+          </ul>
+
+          <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
+            <a href="https://github.com/MarauTech/DIY-PH-MONITOR-/releases/latest" class="btn-pill btn-primary">
+              📥 Download APK (v2.0.0)
+            </a>
+            <a href="https://github.com/MarauTech/DIY-PH-MONITOR-/tree/main/PhMonitorApp" class="btn-pill btn-secondary" target="_blank">
+              Source Code (Kotlin)
+            </a>
+          </div>
+        </div>
+
+        <div style="text-align: center;">
+          <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 20px; padding: 24px; display: inline-block; max-width: 360px;">
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--primary-cyan); margin-bottom: 8px;">WIDGET PODGLĄDU</div>
+            <div style="background: #1A1F2C; border: 1px solid #2D3748; border-radius: 16px; padding: 20px; text-align: left;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 700; font-size: 0.95rem;">MarauTech pH</span>
+                <span style="background: rgba(16, 185, 129, 0.2); border: 1px solid #34D399; color: #34D399; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">NORMAL</span>
+              </div>
+              <div style="margin: 14px 0 6px;">
+                <div style="font-size: 2.2rem; font-weight: 900; color: #38BDF8;">7.21 <span style="font-size: 1.1rem;">pH</span></div>
+                <div style="color: #94A3B8; font-size: 0.9rem;">Temp: <b>24.5 °C</b> | Sonda: <b>2.64 V</b></div>
+              </div>
+              <div style="font-size: 0.75rem; color: #64748B;">Aktualizacja: 12:45:00 • LAN</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hardware & Pinout Section -->
+  <section class="section" id="hardware">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Bill of Materials &amp; Wiring</div>
+        <h2 class="section-title">Hardware Specification</h2>
+        <p class="section-desc">Standard off-the-shelf electronic modules compatible with ESP32-WROOM-32.</p>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Description</th>
+              <th>Pin / Connection</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>ESP32 DevKit V1</b></td>
+              <td>Dual-core 240MHz MCU with Wi-Fi &amp; Bluetooth</td>
+              <td>Core Controller</td>
+            </tr>
+            <tr>
+              <td><b>pH Sensor &amp; Board</b></td>
+              <td>Analog pH-4502C or industrial BNC probe module</td>
+              <td>Analog Out ➔ <b>GPIO 35</b> (ADC1_CH7)</td>
+            </tr>
+            <tr>
+              <td><b>DS18B20 Temp Sensor</b></td>
+              <td>Digital 1-Wire waterproof temperature probe (4.7kΩ pull-up)</td>
+              <td>Data Line ➔ <b>GPIO 23</b></td>
+            </tr>
+            <tr>
+              <td><b>ST7789 TFT LCD</b></td>
+              <td>2.0" / 2.4" 320x240 SPI color display</td>
+              <td>MOSI: <b>18</b>, SCK: <b>19</b>, CS: <b>5</b>, DC: <b>16</b>, RST: <b>4</b></td>
+            </tr>
+            <tr>
+              <td><b>Active Buzzer</b></td>
+              <td>Audible alarm indicator on high/low pH breach</td>
+              <td>Control Pin ➔ <b>GPIO 22</b></td>
+            </tr>
+            <tr>
+              <td><b>Rotary Encoder (Optional)</b></td>
+              <td>Physical menu navigation &amp; calibration controls</td>
+              <td>CLK: <b>32</b>, DT: <b>33</b>, SW: <b>25</b></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- REST API Section -->
+  <section class="section" id="api">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Developer Interface</div>
+        <h2 class="section-title">REST API Overview</h2>
+        <p class="section-desc">Integrate MarauTech pH Monitor directly into your scripts or custom automation.</p>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Endpoint</th>
+              <th>Auth</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span style="color: #38BDF8; font-weight: 700;">GET</span></td>
+              <td><code>/api/status</code></td>
+              <td>Public</td>
+              <td>Returns real-time pH, voltage, temperature, alarms, uptime, and WiFi RSSI in JSON.</td>
+            </tr>
+            <tr>
+              <td><span style="color: #38BDF8; font-weight: 700;">GET</span></td>
+              <td><code>/api/history</code></td>
+              <td>Public</td>
+              <td>Returns stored historical records (JSON array: <code>t, p, te, v, a</code>).</td>
+            </tr>
+            <tr>
+              <td><span style="color: #10B981; font-weight: 700;">POST</span></td>
+              <td><code>/api/calibrate</code></td>
+              <td>Basic Auth</td>
+              <td>Initiates 3-point calibration (<code>neutral</code>, <code>acid</code>, <code>base</code>, <code>custom</code>, <code>reset</code>).</td>
+            </tr>
+            <tr>
+              <td><span style="color: #38BDF8; font-weight: 700;">GET</span></td>
+              <td><code>/api/calibrate/status</code></td>
+              <td>Public</td>
+              <td>Polls calibration progress, stability percentages, and error codes.</td>
+            </tr>
+            <tr>
+              <td><span style="color: #38BDF8; font-weight: 700;">GET</span></td>
+              <td><code>/api/config</code></td>
+              <td>Basic Auth</td>
+              <td>Reads device thresholds, alarm hold times, and integration statuses.</td>
+            </tr>
+            <tr>
+              <td><span style="color: #10B981; font-weight: 700;">POST</span></td>
+              <td><code>/api/config</code></td>
+              <td>Basic Auth</td>
+              <td>Saves alarm limits, MQTT settings, and Pushover tokens.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p style="margin-bottom: 12px;">
+        <b>MarauTech pH Monitor v2.0.0</b> — Released under the <b>MIT License</b>.
+      </p>
+      <p>
+        Maintained by <a href="https://github.com/MarauTech" target="_blank"><b>MarauTech</b></a> • <a href="https://github.com/MarauTech/DIY-PH-MONITOR-" target="_blank">GitHub Repository</a> • <a href="https://github.com/MarauTech/DIY-PH-MONITOR-/releases/latest" target="_blank">Release Notes</a>
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">MarauTech pH Monitor</string>
+    <string name="widget_small_name">pH Monitor (Kompaktowy)</string>
+    <string name="widget_medium_name">pH Monitor (Średni)</string>
+    <string name="widget_large_name">pH Monitor (Pełny)</string>
+    <string name="widget_config_title">Konfiguracja widżetu</string>
+    <string name="notification_channel_alarms_name">Alarmy pH</string>
+    <string name="notification_channel_alarms_desc">Powiadomienia o przekroczeniu dopuszczalnych progów pH</string>
+    <string name="notification_channel_status_name">Status urządzenia</string>
+    <string name="notification_channel_status_desc">Informacje o stanie połączenia i powrocie do normy</string>
+</resources>
