@@ -8,6 +8,7 @@ import com.example.marautechphmonitor.data.local.DataStoreManager
 import com.example.marautechphmonitor.data.remote.*
 import com.example.marautechphmonitor.data.repository.AppRepository
 import com.example.marautechphmonitor.model.AlarmState
+import com.example.marautechphmonitor.notification.NotificationHelper
 import com.example.marautechphmonitor.widget.WidgetUpdateHelper
 import com.example.marautechphmonitor.worker.WorkManagerScheduler
 import kotlinx.coroutines.Job
@@ -164,6 +165,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _connectionError.value = null
                     _lastUpdatedTime.value = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
 
+                    val previousStateCode = dataStoreManager.lastAlarmStateFlow.first()
+                    if (res.alarmState != previousStateCode) {
+                        val notifEnabled = dataStoreManager.notificationsEnabledFlow.first()
+                        val notifyLow = dataStoreManager.notifyLowFlow.first()
+                        val notifyHigh = dataStoreManager.notifyHighFlow.first()
+                        val notifyRecovery = dataStoreManager.notifyRecoveryFlow.first()
+
+                        if (notifEnabled) {
+                            when (res.alarmState) {
+                                1 -> if (notifyLow) {
+                                    NotificationHelper.showAlarmNotification(
+                                        context = getApplication(),
+                                        title = "ALARM: Zbyt niskie pH!",
+                                        message = String.format(Locale.US, "Wykryto zbyt niskie pH: %.2f (Norma przekroczona)", res.ph),
+                                        alarmState = _alarmState.value
+                                    )
+                                }
+                                2 -> if (notifyHigh) {
+                                    NotificationHelper.showAlarmNotification(
+                                        context = getApplication(),
+                                        title = "ALARM: Zbyt wysokie pH!",
+                                        message = String.format(Locale.US, "Wykryto zbyt wysokie pH: %.2f (Norma przekroczona)", res.ph),
+                                        alarmState = _alarmState.value
+                                    )
+                                }
+                                0 -> if (notifyRecovery && (previousStateCode == 1 || previousStateCode == 2)) {
+                                    NotificationHelper.showRecoveryNotification(
+                                        context = getApplication(),
+                                        title = "pH powróciło do normy",
+                                        message = String.format(Locale.US, "Wartość pH powróciła do normy: %.2f", res.ph)
+                                    )
+                                }
+                            }
+                        }
+                        dataStoreManager.saveLastAlarmState(res.alarmState)
+                    }
+
                     WidgetUpdateHelper.updateAllWidgets(
                         context = getApplication(),
                         ph = res.ph,
@@ -181,6 +219,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 delay(2000)
             }
         }
+    }
+
+    fun testLocalNotification() {
+        NotificationHelper.showAlarmNotification(
+            context = getApplication(),
+            title = "TEST: Alarm pH Monitor",
+            message = "To jest testowe powiadomienie z aplikacji MarauTech pH Monitor. System powiadomień działa poprawnie!",
+            alarmState = AlarmState.NORMAL
+        )
     }
 
     fun stopPolling() {
