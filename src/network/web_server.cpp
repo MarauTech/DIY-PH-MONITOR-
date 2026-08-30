@@ -119,7 +119,6 @@ void WebServer::setupRoutes() {
         if (isAP || !LittleFS.exists("/index.html")) {
             req->send(200, "text/html", WIFI_SETUP_HTML);
         } else {
-            if (!authenticate(req)) return;
             req->send(LittleFS, "/index.html", "text/html");
         }
     });
@@ -229,9 +228,8 @@ void WebServer::setupRoutes() {
         req->send(res);
     });
 
-    // Protected Config API (GET)
+    // Public Config API (GET) — returns config with NO secrets
     server.on("/api/config", HTTP_GET, [this](AsyncWebServerRequest *req){
-        if (!authenticate(req)) return;
         AsyncResponseStream *res = req->beginResponseStream("application/json");
         JsonDocument doc;
         auto& cfg = Settings::instance().config();
@@ -262,9 +260,8 @@ void WebServer::setupRoutes() {
         req->send(res);
     });
 
-    // Protected Config API (POST)
+    // Config API (POST)
     server.addHandler(new AsyncCallbackJsonWebHandler("/api/config", [this](AsyncWebServerRequest *req, JsonVariant &json) {
-        if (!authenticate(req)) return;
         JsonObject doc = json.as<JsonObject>();
         auto& cfg = Settings::instance().config();
         
@@ -376,9 +373,8 @@ void WebServer::setupRoutes() {
         req->send(200, "application/json", "{\"status\":\"ok\"}");
     }));
 
-    // Protected Calibration trigger (POST)
+    // Calibration trigger (POST)
     server.addHandler(new AsyncCallbackJsonWebHandler("/api/calibrate", [this](AsyncWebServerRequest *req, JsonVariant &json) {
-        if (!authenticate(req)) return;
         JsonObject doc = json.as<JsonObject>();
         String type = doc["type"] | "";
         float custom = doc["customPH"] | 7.0f;
