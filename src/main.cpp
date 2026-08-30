@@ -93,7 +93,7 @@ void setup() {
     auto& cfg = Settings::instance().config();
 
 #if defined(DEFAULT_WIFI_SSID) && defined(DEFAULT_WIFI_PASS)
-    if (!Settings::instance().hasWifiCredentials() && strlen(DEFAULT_WIFI_SSID) > 0) {
+    if (strlen(DEFAULT_WIFI_SSID) > 0) {
         strlcpy(cfg.wifiSSID, DEFAULT_WIFI_SSID, sizeof(cfg.wifiSSID));
         strlcpy(cfg.wifiPass, DEFAULT_WIFI_PASS, sizeof(cfg.wifiPass));
         Settings::instance().saveWifi();
@@ -160,6 +160,7 @@ void setup() {
 void loop() {
     if (apModeActive) {
         wifiMgr.handleDNS();
+        delay(10);
         return;
     }
     

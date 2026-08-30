@@ -22,23 +22,43 @@ void WifiManager::begin(const char* ssid, const char* pass) {
 
 void WifiManager::startAP() {
     apMode = true;
+    WiFi.disconnect(true);
+    delay(100);
     WiFi.mode(WIFI_AP);
-    WiFi.softAP("PH-Monitor-Setup", NULL);
-    delay(500);
-    dnsServer.start(53, "*", IPAddress(192, 168, 4, 1));
+    
+    IPAddress apIP(192, 168, 4, 1);
+    IPAddress netMsk(255, 255, 255, 0);
+    WiFi.softAPConfig(apIP, apIP, netMsk);
+    WiFi.softAP("PH-Monitor-Setup");
+    delay(200);
+    
+    dnsServer.start(53, "*", apIP);
+    Serial.println("[WiFi] Tryb AP uruchomiony: PH-Monitor-Setup (192.168.4.1)");
 }
 
 bool WifiManager::connectSTA(const char* ssid, const char* pass, int timeoutMs) {
     apMode = false;
+    WiFi.disconnect(true);
+    delay(100);
     WiFi.mode(WIFI_STA);
+    WiFi.setSleep(false);
+    WiFi.setTxPower(WIFI_POWER_19_5dBm);
+    WiFi.setAutoReconnect(true);
     WiFi.begin(ssid, pass);
+    
+    Serial.printf("[WiFi] Laczenie z siecia %s ...\n", ssid);
     unsigned long start = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - start < (unsigned long)timeoutMs) {
-        delay(100);
+        delay(200);
+        Serial.print(".");
     }
+    Serial.println();
+    
     if (WiFi.status() == WL_CONNECTED) {
+        Serial.printf("[WiFi] Polaczono! Adres IP: %s, RSSI: %d dBm\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
         return true;
     } else {
+        Serial.println("[WiFi] Nie udalo sie polaczyc z siecia. Uruchamiam AP.");
         startAP();
         return false;
     }
@@ -66,6 +86,7 @@ void WifiManager::setupMDNS(const char* hostname) {
     if (!apMode && isConnected()) {
         if (MDNS.begin(hostname)) {
             MDNS.addService("http", "tcp", 80);
+            Serial.printf("[mDNS] Dostepny pod http://%s.local\n", hostname);
         }
     }
 }
@@ -79,8 +100,7 @@ void WifiManager::setupNTP() {
 bool WifiManager::isNTPSynced() {
     time_t now;
     time(&now);
-    // 2024-01-01 is roughly 1704067200
-    return now > 1704067200;
+    return now > 1704067200; // > 2024-01-01
 }
 
 String WifiManager::getTimeString() {
