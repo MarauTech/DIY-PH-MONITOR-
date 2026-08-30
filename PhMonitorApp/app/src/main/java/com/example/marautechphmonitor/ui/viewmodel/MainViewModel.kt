@@ -88,6 +88,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val notifyLow = dataStoreManager.notifyLowFlow
     val notifyHigh = dataStoreManager.notifyHighFlow
     val notifyRecovery = dataStoreManager.notifyRecoveryFlow
+    val notifyOffline = dataStoreManager.notifyOfflineFlow
     val checkInterval = dataStoreManager.checkIntervalFlow
 
     private var pollingJob: Job? = null
@@ -166,13 +167,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _lastUpdatedTime.value = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
 
                     val previousStateCode = dataStoreManager.lastAlarmStateFlow.first()
-                    if (res.alarmState != previousStateCode) {
-                        val notifEnabled = dataStoreManager.notificationsEnabledFlow.first()
-                        val notifyLow = dataStoreManager.notifyLowFlow.first()
-                        val notifyHigh = dataStoreManager.notifyHighFlow.first()
-                        val notifyRecovery = dataStoreManager.notifyRecoveryFlow.first()
+                    val notifEnabled = dataStoreManager.notificationsEnabledFlow.first()
+                    val notifyLow = dataStoreManager.notifyLowFlow.first()
+                    val notifyHigh = dataStoreManager.notifyHighFlow.first()
+                    val notifyRecovery = dataStoreManager.notifyRecoveryFlow.first()
 
-                        if (notifEnabled) {
+                    if (notifEnabled) {
+                        if (previousStateCode == -1 && notifyRecovery) {
+                            NotificationHelper.showRecoveryNotification(
+                                context = getApplication(),
+                                title = "Połączenie przywrócone",
+                                message = "Monitor pH (${res.deviceName}) jest ponownie online!"
+                            )
+                        } else if (res.alarmState != previousStateCode) {
                             when (res.alarmState) {
                                 1 -> if (notifyLow) {
                                     NotificationHelper.showAlarmNotification(
@@ -199,8 +206,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                                 }
                             }
                         }
-                        dataStoreManager.saveLastAlarmState(res.alarmState)
                     }
+                    dataStoreManager.saveLastAlarmState(res.alarmState)
 
                     WidgetUpdateHelper.updateAllWidgets(
                         context = getApplication(),
@@ -215,6 +222,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 } catch (e: Exception) {
                     _isConnected.value = false
                     _alarmState.value = AlarmState.OFFLINE
+
+                    val previousStateCode = dataStoreManager.lastAlarmStateFlow.first()
+                    val notifEnabled = dataStoreManager.notificationsEnabledFlow.first()
+                    val notifyOff = dataStoreManager.notifyOfflineFlow.first()
+
+                    if (notifEnabled && notifyOff && previousStateCode != -1) {
+                        NotificationHelper.showOfflineNotification(
+                            context = getApplication(),
+                            title = "Utracono połączenie z pH Monitorem!",
+                            message = "Urządzenie przestało odpowiadać w sieci LAN. Sprawdź zasilanie lub sieć Wi-Fi."
+                        )
+                        dataStoreManager.saveLastAlarmState(-1)
+                    }
                 }
                 delay(2000)
             }
@@ -379,10 +399,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         notifyLow: Boolean,
         notifyHigh: Boolean,
         notifyRecovery: Boolean,
+        notifyOffline: Boolean,
         intervalMinutes: Int
     ) {
         viewModelScope.launch {
-            dataStoreManager.saveNotificationSettings(enabled, notifyLow, notifyHigh, notifyRecovery, intervalMinutes)
+            dataStoreManager.saveNotificationSettings(enabled, notifyLow, notifyHigh, notifyRecovery, notifyOffline, intervalMinutes)
             if (enabled) {
                 WorkManagerScheduler.scheduleMonitoring(getApplication(), intervalMinutes)
             } else {

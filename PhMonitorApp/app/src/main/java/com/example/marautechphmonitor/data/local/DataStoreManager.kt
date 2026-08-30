@@ -29,6 +29,7 @@ class DataStoreManager(private val context: Context) {
         val NOTIFY_LOW_KEY = booleanPreferencesKey("notify_low")
         val NOTIFY_HIGH_KEY = booleanPreferencesKey("notify_high")
         val NOTIFY_RECOVERY_KEY = booleanPreferencesKey("notify_recovery")
+        val NOTIFY_OFFLINE_KEY = booleanPreferencesKey("notify_offline")
         val CHECK_INTERVAL_MINUTES_KEY = intPreferencesKey("check_interval_minutes")
         val LAST_ALARM_STATE_KEY = intPreferencesKey("last_alarm_state")
 
@@ -53,6 +54,7 @@ class DataStoreManager(private val context: Context) {
     val notifyLowFlow: Flow<Boolean> = context.dataStore.data.map { it[NOTIFY_LOW_KEY] ?: true }
     val notifyHighFlow: Flow<Boolean> = context.dataStore.data.map { it[NOTIFY_HIGH_KEY] ?: true }
     val notifyRecoveryFlow: Flow<Boolean> = context.dataStore.data.map { it[NOTIFY_RECOVERY_KEY] ?: true }
+    val notifyOfflineFlow: Flow<Boolean> = context.dataStore.data.map { it[NOTIFY_OFFLINE_KEY] ?: true }
     val checkIntervalFlow: Flow<Int> = context.dataStore.data.map { it[CHECK_INTERVAL_MINUTES_KEY] ?: 15 }
     val lastAlarmStateFlow: Flow<Int> = context.dataStore.data.map { it[LAST_ALARM_STATE_KEY] ?: 0 }
 
@@ -69,6 +71,7 @@ class DataStoreManager(private val context: Context) {
         notifyLow: Boolean,
         notifyHigh: Boolean,
         notifyRecovery: Boolean,
+        notifyOffline: Boolean,
         intervalMinutes: Int
     ) {
         context.dataStore.edit { prefs ->
@@ -76,6 +79,7 @@ class DataStoreManager(private val context: Context) {
             prefs[NOTIFY_LOW_KEY] = notifyLow
             prefs[NOTIFY_HIGH_KEY] = notifyHigh
             prefs[NOTIFY_RECOVERY_KEY] = notifyRecovery
+            prefs[NOTIFY_OFFLINE_KEY] = notifyOffline
             prefs[CHECK_INTERVAL_MINUTES_KEY] = intervalMinutes
         }
     }

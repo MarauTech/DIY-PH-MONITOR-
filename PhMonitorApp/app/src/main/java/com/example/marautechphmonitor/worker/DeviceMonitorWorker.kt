@@ -29,6 +29,7 @@ class DeviceMonitorWorker(
         val notifyLow = dataStoreManager.notifyLowFlow.first()
         val notifyHigh = dataStoreManager.notifyHighFlow.first()
         val notifyRecovery = dataStoreManager.notifyRecoveryFlow.first()
+        val notifyOffline = dataStoreManager.notifyOfflineFlow.first()
         val lastStateCode = dataStoreManager.lastAlarmStateFlow.first()
 
         val ip = dataStoreManager.deviceIpFlow.first()
@@ -72,38 +73,46 @@ class DeviceMonitorWorker(
             )
 
             // Check if state changed for notifications
-            if (notificationsEnabled && currentStateCode != lastStateCode) {
-                when (currentStateCode) {
-                    1 -> { // LOW PH
-                        if (notifyLow) {
-                            val msg = String.format(Locale.US, "Wykryto zbyt niskie pH: %.2f (Norma przekroczona)", status.ph)
-                            NotificationHelper.showAlarmNotification(
-                                context = context,
-                                title = "ALARM: Zbyt niskie pH!",
-                                message = msg,
-                                alarmState = currentAlarmState
-                            )
+            if (notificationsEnabled) {
+                if (lastStateCode == -1 && notifyRecovery) {
+                    NotificationHelper.showRecoveryNotification(
+                        context = context,
+                        title = "Połączenie przywrócone",
+                        message = "Monitor pH (${status.deviceName}) jest ponownie online!"
+                    )
+                } else if (currentStateCode != lastStateCode) {
+                    when (currentStateCode) {
+                        1 -> { // LOW PH
+                            if (notifyLow) {
+                                val msg = String.format(Locale.US, "Wykryto zbyt niskie pH: %.2f (Norma przekroczona)", status.ph)
+                                NotificationHelper.showAlarmNotification(
+                                    context = context,
+                                    title = "ALARM: Zbyt niskie pH!",
+                                    message = msg,
+                                    alarmState = currentAlarmState
+                                )
+                            }
                         }
-                    }
-                    2 -> { // HIGH PH
-                        if (notifyHigh) {
-                            val msg = String.format(Locale.US, "Wykryto zbyt wysokie pH: %.2f (Norma przekroczona)", status.ph)
-                            NotificationHelper.showAlarmNotification(
-                                context = context,
-                                title = "ALARM: Zbyt wysokie pH!",
-                                message = msg,
-                                alarmState = currentAlarmState
-                            )
+                        2 -> { // HIGH PH
+                            if (notifyHigh) {
+                                val msg = String.format(Locale.US, "Wykryto zbyt wysokie pH: %.2f (Norma przekroczona)", status.ph)
+                                NotificationHelper.showAlarmNotification(
+                                    context = context,
+                                    title = "ALARM: Zbyt wysokie pH!",
+                                    message = msg,
+                                    alarmState = currentAlarmState
+                                )
+                            }
                         }
-                    }
-                    0 -> { // NORMAL (Recovery)
-                        if (notifyRecovery && (lastStateCode == 1 || lastStateCode == 2)) {
-                            val msg = String.format(Locale.US, "Wartość pH powróciła do normy: %.2f", status.ph)
-                            NotificationHelper.showRecoveryNotification(
-                                context = context,
-                                title = "pH powróciło do normy",
-                                message = msg
-                            )
+                        0 -> { // NORMAL (Recovery)
+                            if (notifyRecovery && (lastStateCode == 1 || lastStateCode == 2)) {
+                                val msg = String.format(Locale.US, "Wartość pH powróciła do normy: %.2f", status.ph)
+                                NotificationHelper.showRecoveryNotification(
+                                    context = context,
+                                    title = "pH powróciło do normy",
+                                    message = msg
+                                )
+                            }
                         }
                     }
                 }
@@ -113,7 +122,14 @@ class DeviceMonitorWorker(
             Result.success()
         } catch (e: Exception) {
             Log.w(TAG, "Failed to monitor device in background: ${e.message}")
-            // Update widgets with offline indication if desired, but keep last values
+            if (notificationsEnabled && notifyOffline && lastStateCode != -1) {
+                NotificationHelper.showOfflineNotification(
+                    context = context,
+                    title = "Brak połączenia z pH Monitorem!",
+                    message = "Urządzenie nie odpowiada pod adresem $target. Sprawdź zasilanie i sieć Wi-Fi."
+                )
+                dataStoreManager.saveLastAlarmState(-1)
+            }
             Result.retry()
         }
     }

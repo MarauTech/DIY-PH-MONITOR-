@@ -16,6 +16,7 @@ object NotificationHelper {
     const val CHANNEL_STATUS_ID = "ph_status_channel"
     private const val ALARM_NOTIFICATION_ID = 1001
     private const val RECOVERY_NOTIFICATION_ID = 1002
+    private const val OFFLINE_NOTIFICATION_ID = 1003
 
     fun createNotificationChannels(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -111,5 +112,39 @@ object NotificationHelper {
             .build()
 
         notificationManager.notify(RECOVERY_NOTIFICATION_ID, notification)
+    }
+
+    fun showOfflineNotification(
+        context: Context,
+        title: String,
+        message: String
+    ) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        createNotificationChannels(context)
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ALARMS_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        notificationManager.notify(OFFLINE_NOTIFICATION_ID, notification)
     }
 }

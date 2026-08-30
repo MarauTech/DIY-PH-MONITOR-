@@ -39,6 +39,7 @@ fun SettingsScreen(
     val notifyLow by viewModel.notifyLow.collectAsState(initial = true)
     val notifyHigh by viewModel.notifyHigh.collectAsState(initial = true)
     val notifyRecovery by viewModel.notifyRecovery.collectAsState(initial = true)
+    val notifyOffline by viewModel.notifyOffline.collectAsState(initial = true)
     val checkInterval by viewModel.checkInterval.collectAsState(initial = 15)
 
     var alarmLow by remember { mutableStateOf("6.50") }
@@ -52,6 +53,7 @@ fun SettingsScreen(
     var localNotifLow by remember { mutableStateOf(true) }
     var localNotifHigh by remember { mutableStateOf(true) }
     var localNotifRec by remember { mutableStateOf(true) }
+    var localNotifOffline by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         viewModel.loadConfig()
@@ -68,11 +70,12 @@ fun SettingsScreen(
         }
     }
 
-    LaunchedEffect(notificationsEnabled, notifyLow, notifyHigh, notifyRecovery) {
+    LaunchedEffect(notificationsEnabled, notifyLow, notifyHigh, notifyRecovery, notifyOffline) {
         localNotifEn = notificationsEnabled
         localNotifLow = notifyLow
         localNotifHigh = notifyHigh
         localNotifRec = notifyRecovery
+        localNotifOffline = notifyOffline
     }
 
     Scaffold(
@@ -253,6 +256,15 @@ fun SettingsScreen(
                             Checkbox(checked = localNotifRec, onCheckedChange = { localNotifRec = it })
                         }
 
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Alert przy utracie połączenia (OFFLINE)", style = MaterialTheme.typography.bodySmall)
+                            Checkbox(checked = localNotifOffline, onCheckedChange = { localNotifOffline = it })
+                        }
+
                         Text(
                             text = "Interwał odpytywania w tle: 15 minut (standardowe ograniczenie systemu Android dla oszczędzania baterii).",
                             style = MaterialTheme.typography.labelSmall,
@@ -299,6 +311,7 @@ fun SettingsScreen(
                         notifyLow = localNotifLow,
                         notifyHigh = localNotifHigh,
                         notifyRecovery = localNotifRec,
+                        notifyOffline = localNotifOffline,
                         intervalMinutes = checkInterval
                     )
                 },
