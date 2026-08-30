@@ -5,135 +5,117 @@
 #include "defaults.h"
 
 namespace Display {
-    static SPIClass* spi = nullptr;
-
-    static void sendCommand(uint8_t cmd) {
+    static inline void dcCmd() {
         digitalWrite(PIN_TFT_DC, LOW);
-        digitalWrite(PIN_TFT_CS, LOW);
-        spi->transfer(cmd);
-        digitalWrite(PIN_TFT_CS, HIGH);
     }
     
-    static void sendData(uint8_t data) {
+    static inline void dcData() {
         digitalWrite(PIN_TFT_DC, HIGH);
+    }
+    
+    static inline void csLow() {
         digitalWrite(PIN_TFT_CS, LOW);
-        spi->transfer(data);
+    }
+    
+    static inline void csHigh() {
         digitalWrite(PIN_TFT_CS, HIGH);
+    }
+
+    static void sendCommand(uint8_t cmd) {
+        dcCmd();
+        csLow();
+        SPI.transfer(cmd);
+        csHigh();
+    }
+    
+    static void sendData8(uint8_t data) {
+        dcData();
+        csLow();
+        SPI.transfer(data);
+        csHigh();
     }
     
     static void sendData16(uint16_t data) {
-        digitalWrite(PIN_TFT_DC, HIGH);
-        digitalWrite(PIN_TFT_CS, LOW);
-        spi->write16(data);
-        digitalWrite(PIN_TFT_CS, HIGH);
+        dcData();
+        csLow();
+        SPI.transfer16(data);
+        csHigh();
     }
     
-    static void setAddrWindow(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
+    static void setAddrWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
         sendCommand(0x2A);
-        sendData16(x);
-        sendData16(x + w - 1);
+        sendData8(x0 >> 8);
+        sendData8(x0 & 0xFF);
+        sendData8(x1 >> 8);
+        sendData8(x1 & 0xFF);
         sendCommand(0x2B);
-        sendData16(y);
-        sendData16(y + h - 1);
+        sendData8(y0 >> 8);
+        sendData8(y0 & 0xFF);
+        sendData8(y1 >> 8);
+        sendData8(y1 & 0xFF);
         sendCommand(0x2C);
     }
 
     void init() {
-        pinMode(PIN_TFT_CS, OUTPUT);
-        pinMode(PIN_TFT_DC, OUTPUT);
-        pinMode(PIN_TFT_RST, OUTPUT);
-        pinMode(PIN_TFT_BL, OUTPUT);
-        
-        digitalWrite(PIN_TFT_CS, HIGH);
-        digitalWrite(PIN_TFT_DC, HIGH);
+        pinMode(PIN_TFT_CS, OUTPUT);  digitalWrite(PIN_TFT_CS, HIGH);
+        pinMode(PIN_TFT_DC, OUTPUT);  digitalWrite(PIN_TFT_DC, HIGH);
+        pinMode(PIN_TFT_RST, OUTPUT); digitalWrite(PIN_TFT_RST, HIGH);
+        pinMode(PIN_TFT_BL, OUTPUT);  digitalWrite(PIN_TFT_BL, HIGH);
         
         digitalWrite(PIN_TFT_RST, LOW);
-        delay(10);
+        delay(100);
         digitalWrite(PIN_TFT_RST, HIGH);
-        delay(120);
+        delay(200);
         
-        spi = new SPIClass(HSPI);
-        spi->begin(PIN_SPI_SCK, -1, PIN_SPI_MOSI, PIN_TFT_CS);
-        spi->beginTransaction(SPISettings(40000000, MSBFIRST, SPI_MODE0));
+        SPI.begin(PIN_SPI_SCK, -1, PIN_SPI_MOSI, PIN_TFT_CS);
+        SPI.setFrequency(40000000);
+        SPI.setDataMode(SPI_MODE0);
+        SPI.setBitOrder(MSBFIRST);
         
-        sendCommand(0x01); // SWRESET
-        delay(150);
-        sendCommand(0x11); // SLPOUT
-        delay(50);
+        sendCommand(0x01); delay(150);
+        sendCommand(0x11); delay(500);
         
-        sendCommand(0x36); // MADCTL
-        sendData(0xB0); // Landscape
+        sendCommand(0x36); sendData8(0xB0); // Landscape
+        sendCommand(0x3A); sendData8(0x55); // 16bit color
         
-        sendCommand(0x3A); // COLMOD
-        sendData(0x55); // 16bit color
+        sendCommand(0xB2);
+        sendData8(0x0C); sendData8(0x0C);
+        sendData8(0x00); sendData8(0x33); sendData8(0x33);
         
-        sendCommand(0xB2); // PORCTRL
-        sendData(0x0C);
-        sendData(0x0C);
-        sendData(0x00);
-        sendData(0x33);
-        sendData(0x33);
-        
-        sendCommand(0xB7); // GCTRL
-        sendData(0x35);
-        
-        sendCommand(0xBB); // VCOMS
-        sendData(0x1F);
-        
-        sendCommand(0xC0); // LCMCTRL
-        sendData(0x2C);
-        
-        sendCommand(0xC2); // VDVVRHEN
-        sendData(0x01);
-        
-        sendCommand(0xC3); // VRHS
-        sendData(0x12);
-        
-        sendCommand(0xC4); // VDVS
-        sendData(0x20);
-        
-        sendCommand(0xC6); // FRCTRL2
-        sendData(0x0F);
-        
-        sendCommand(0xD0); // PWCTRL1
-        sendData(0xA4);
-        sendData(0xA1);
-        
+        sendCommand(0xB7); sendData8(0x35);
+        sendCommand(0xBB); sendData8(0x19);
+        sendCommand(0xC0); sendData8(0x2C);
+        sendCommand(0xC2); sendData8(0x01);
+        sendCommand(0xC3); sendData8(0x12);
+        sendCommand(0xC4); sendData8(0x20);
+        sendCommand(0xC6); sendData8(0x0F);
+        sendCommand(0xD0); sendData8(0xA4); sendData8(0xA1);
         sendCommand(0x21); // INVON
-        
-        sendCommand(0x29); // DISPON
-        delay(50);
-        
-        digitalWrite(PIN_TFT_BL, HIGH);
+        sendCommand(0x29); delay(100); // DISPON
     }
 
     void drawPixel(uint16_t x, uint16_t y, uint16_t color) {
-        if(x >= 320 || y >= 240) return;
-        setAddrWindow(x, y, 1, 1);
-        digitalWrite(PIN_TFT_DC, HIGH);
-        digitalWrite(PIN_TFT_CS, LOW);
-        spi->write16(color);
-        digitalWrite(PIN_TFT_CS, HIGH);
+        if (x >= 320 || y >= 240) return;
+        setAddrWindow(x, y, x, y);
+        dcData();
+        csLow();
+        SPI.transfer16(color);
+        csHigh();
     }
 
     void fillRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color) {
-        if(x >= 320 || y >= 240 || w == 0 || h == 0) return;
-        if(x + w > 320) w = 320 - x;
-        if(y + h > 240) h = 240 - y;
+        if (x >= 320 || y >= 240 || w == 0 || h == 0) return;
+        if (x + w > 320) w = 320 - x;
+        if (y + h > 240) h = 240 - y;
         
-        setAddrWindow(x, y, w, h);
-        digitalWrite(PIN_TFT_DC, HIGH);
-        digitalWrite(PIN_TFT_CS, LOW);
-        
-        uint32_t len = w * h;
-        while(len > 0) {
-            uint16_t chunk = (len > 32767) ? 32767 : len;
-            for(uint16_t i=0; i<chunk; i++) {
-                spi->write16(color);
-            }
-            len -= chunk;
+        setAddrWindow(x, y, x + w - 1, y + h - 1);
+        uint32_t total = (uint32_t)w * h;
+        dcData();
+        csLow();
+        for (uint32_t i = 0; i < total; i++) {
+            SPI.transfer16(color);
         }
-        digitalWrite(PIN_TFT_CS, HIGH);
+        csHigh();
     }
 
     void fillScreen(uint16_t color) {
